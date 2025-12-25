@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Trigger Cloudflare Deploy</title>
+  </head>
+  <body>
+    <h3>Triggering deploy…</h3>
+    <pre id="out">running</pre>
+    <script>
+      const hook = "https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/da328305-e098-4ff9-89b7-6e7f184a627e";
+      fetch(hook, { method: "POST" })
+        .then(async (r) => {
+          const t = await r.text();
+          document.getElementById("out").textContent = `status: ${r.status}\n${t}`;
+        })
+        .catch((e) => {
+          document.getElementById("out").textContent = String(e);
+        });
+    </script>
+  </body>
+</html>
