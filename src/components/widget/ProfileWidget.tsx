@@ -52,7 +52,7 @@ const LinkIcon = ({ icon, hasId }: { icon: string; hasId: boolean }) => {
   )
 }
 
-// 辅助函数：定义品牌颜色
+// 辅助函数：定义品牌颜色 (保持不变)
 const getBrandGradient = (url: string, iconName: string): string => {
   const target = (url + iconName).toLowerCase();
   
@@ -68,7 +68,7 @@ const getBrandGradient = (url: string, iconName: string): string => {
   return 'linear-gradient(135deg, #525252 0%, #404040 100%)';
 }
 
-// ⬇️ 关键修改：将 props 参数名从 'config' 改回 'data'
+// ⬇️ 保持参数名为 data，以匹配父组件 WidgetCollection 的调用
 export const ProfileWidget = ({ data }: { data: ProfileWidgetType }) => {
   const { isMobile, isTablet, isDesktop, isWidescreen } = useScreenSize()
 
@@ -80,7 +80,7 @@ export const ProfileWidget = ({ data }: { data: ProfileWidgetType }) => {
           <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
           <div className="relative aspect-square w-24 h-24 lg:w-32 lg:h-32 rounded-full ring-4 ring-neutral-100 dark:ring-neutral-800 overflow-hidden shadow-xl">
             <ImageWithPlaceholder
-              src={data.avatar} 
+              src={data.image}  // 👈 修正点：这里改回了 data.image (之前错误的写成了 avatar)
               alt="avatar"
               fill={true}
               containerClassName="w-full h-full"
@@ -91,7 +91,6 @@ export const ProfileWidget = ({ data }: { data: ProfileWidgetType }) => {
 
         {/* 社交按钮区域 */}
         <div className="flex flex-row justify-center items-center gap-2 lg:gap-4">
-          {/* ⬇️ 这里也把 config 改为了 data */}
           {data.links.map((item, index) => {
             const backgroundStyle = getBrandGradient(item.url, item.icon);
 
@@ -108,7 +107,6 @@ export const ProfileWidget = ({ data }: { data: ProfileWidgetType }) => {
                   'transition-all duration-300 ease-in-out',
                   'hover:scale-110 hover:-translate-y-1',
                   isMobile || isTablet ? 'w-8 h-8' : '',
-                  // ⬇️ 这里也把 config 改为了 data
                   isDesktop ? (data.id ? 'w-8 h-8' : 'w-10 h-10') : '',
                   isWidescreen ? (data.id ? 'w-10 h-10' : 'w-12 h-12') : ''
                 )}
