@@ -95,7 +95,7 @@ export const EncryptedCallout = ({ block, children }: { block: any; children: an
               受保护的内容
             </h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 font-medium text-center">
-              内容已折叠隐藏，请输入密码查看完整内容。
+              请输入密码查看完整内容。
             </p>
 
             <div className="w-full flex flex-col gap-3">
