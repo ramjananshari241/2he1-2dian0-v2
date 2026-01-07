@@ -25,11 +25,12 @@ const MemberModal = ({ isOpen, onClose, isCopied, onCopy }: any) => {
         <div className="p-8 text-center flex flex-col items-center">
           <h3 className="text-xl font-bold text-white mb-2">👑永久会员：￥000</h3>
           <p className="text-xs text-gray-400 mb-6 leading-relaxed">请打开网页右下角客服工具发送当前站点编号，按照指引完成注册及购买</p>
-          <div onClick={onCopy} className="group relative cursor-pointer w-full mb-6 p-4 rounded-2xl bg-black/40 border border-white/5">
-            <span className="text-2xl font-mono font-bold text-white tracking-widest block">{SHOP_CODE}</span>
-            <div className={`absolute inset-0 flex items-center justify-center rounded-2xl bg-blue-600/90 transition-all ${isCopied ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-              <span className="text-xs font-bold text-white">✨ 复制成功</span>
-            </div>
+          <div onClick={handleCopy} className="group relative cursor-pointer w-full mb-6 p-4 rounded-2xl bg-black/40 border border-white/5">
+             {/* 此处 handleCopy 由父组件传入 */}
+             <span className="text-2xl font-mono font-bold text-white tracking-widest block">{SHOP_CODE}</span>
+             <div className={`absolute inset-0 flex items-center justify-center rounded-2xl bg-blue-600/90 transition-all ${isCopied ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+               <span className="text-xs font-bold text-white">✨ 复制成功</span>
+             </div>
           </div>
           <button type="button" className="w-full py-3 rounded-xl text-sm font-bold text-black bg-white" onClick={onClose}>关闭</button>
         </div>
@@ -71,21 +72,22 @@ export const StatsWidget = ({ data }: { data: BlogStats }) => {
       {showModal && <MemberModal isOpen={showModal} onClose={() => setShowModal(false)} isCopied={isCopied} onCopy={handleCopy} />}
 
       <div className="relative h-full w-full group/card transition-all duration-300">
-        {/* 流光边框 */}
         <div className="absolute -inset-[1px] rounded-[26px] bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 opacity-0 group-hover/card:opacity-70 blur-sm animate-border-flow transition-opacity"></div>
 
-        {/* 主卡片：调整了移动端的 padding (p-4) */}
         <div className="relative h-full w-full overflow-hidden rounded-3xl border border-white/10 shadow-2xl bg-[#151516]/80 backdrop-blur-2xl p-4 sm:p-6 flex flex-col justify-between min-h-[180px]">
           
-          {/* 标题区域：减小了移动端的间距 (mb-2) */}
-          <div className="flex flex-col items-center justify-center mb-2 sm:mb-4">
+          {/* 标题区域：移除了蓝条，新增了呼吸灯 */}
+          <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
              <h2 className="text-lg sm:text-2xl font-extrabold text-white tracking-wide antialiased">
                会员服务
              </h2>
-             <div className="w-6 sm:w-8 h-1 bg-blue-500 mt-1 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+             {/* 绿色呼吸灯组 */}
+             <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+             </span>
           </div>
 
-          {/* 按钮区域：调整了高度 (h-8/h-10) 和 间距 (gap-2) */}
           <div className="flex flex-col gap-2 sm:gap-3 w-full"> 
               <button 
                 onClick={() => setShowModal(true)} 
@@ -108,12 +110,11 @@ export const StatsWidget = ({ data }: { data: BlogStats }) => {
               </button>
           </div>
           
-          {/* 底部信息：在移动端更紧凑 */}
-          <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t border-white/5 flex justify-between items-center text-[8px] sm:text-[10px] text-gray-500 font-bold">
+          {/* 底部信息：去掉了横线 border-t */}
+          <div className="mt-2 sm:mt-4 flex justify-between items-center text-[8px] sm:text-[10px] text-gray-500 font-bold tracking-tighter">
             <span>POSTS: {postsCount}</span>
-            <span className="flex items-center gap-1 text-emerald-500">
-              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              ONLINE
+            <span className="text-emerald-500/80 uppercase tracking-widest">
+              Live Support
             </span>
           </div>
         </div>
