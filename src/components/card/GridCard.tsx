@@ -2,7 +2,7 @@
 import { classNames } from '@/src/lib/util'
 import { Post } from '@/src/types/blog'
 import Link from 'next/link'
-import React from 'react' // 👈 显式引入以防报错
+import React from 'react'
 import { PostCategory, PostImage, PostTime } from './CardInfo'
 
 type GridCardProps = {
@@ -10,29 +10,11 @@ type GridCardProps = {
   size: 'small' | 'medium' | 'large'
 }
 
-/**
- * 4.0 响应式尺寸配置
- * 重点修复了 large 在移动端（无 md 前缀）的比例和高度
- */
 const SIZE = {
   large: {
-    // 移动端：高度自适应，纵向排列 | 桌面端：横向排列固定高度
-    card: classNames(
-      'w-full h-auto flex-col',
-      'md:flex-row md:h-[18rem]', 
-      'lg:h-[22.5rem]'
-    ),
-    // 移动端：高度固定为 200px(h-52) 且占满宽度 | 桌面端：宽度占比 60%
-    image: classNames(
-      'h-52 w-full', 
-      'md:h-full md:w-[60%]',
-      'lg:w-[62%]'
-    ),
-    title: classNames(
-      'text-xl leading-snug', 
-      'md:text-2xl md:leading-tight md:line-clamp-3',
-      'lg:text-3xl'
-    ),
+    card: classNames('w-full h-auto flex-col', 'md:flex-row md:h-[18rem]', 'lg:h-[22.5rem]'),
+    image: classNames('h-52 w-full', 'md:h-full md:w-[60%]', 'lg:w-[62%]'),
+    title: classNames('text-xl leading-snug', 'md:text-2xl md:leading-tight md:line-clamp-3', 'lg:text-3xl'),
   },
   medium: {
     card: 'h-auto min-h-[24rem] flex-col',
@@ -51,51 +33,39 @@ const GridCard = ({ post, size }: GridCardProps) => {
 
   return (
     <React.StrictMode>
-      <Link
-        href={{
-          pathname: '/post/[slug]',
-          query: {
-            slug: slug,
-          },
-        }}
-      >
+      <Link href={{ pathname: '/post/[slug]', query: { slug: slug } }}>
         <div
           className={classNames(
-            // 基础视觉：统一 iOS 磨砂玻璃风格 + 鼠标交互反馈
             'group relative flex transform-gpu cursor-pointer select-none overflow-hidden rounded-[2.5rem]',
             'bg-[#151516]/70 backdrop-blur-xl border border-white/10 shadow-2xl',
             'transition-all duration-500 ease-out hover:scale-[1.015] hover:bg-[#1c1c1e]/90',
-            'active:scale-[0.98]',
             SIZE[size].card
           )}
         >
-          {/* 内部高光氛围 - 悬停时增强质感 */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-[60px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+          {/* 背景光斑氛围 */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-[60px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
           <header
             className={classNames(
-              'relative overflow-hidden shrink-0 transition-all duration-500',
+              'relative overflow-hidden shrink-0',
               SIZE[size].image
             )}
           >
-            {/* 使用 object-cover 确保图片即使在不同比例下也不变形 */}
+            {/* 🛑 关键修复：移除所有 filter/blur，确保图片色彩准确 */}
             <PostImage
               cover={cover}
               alt={title}
               className={
-                'w-full h-full object-cover opacity-90 transition-all duration-700 group-hover:scale-110 group-hover:opacity-100'
+                'w-full h-full object-cover opacity-100 transition-all duration-700 group-hover:scale-110'
               }
             />
-            {/* 图片层渐变，提升标题对比度 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/60 via-transparent to-transparent"></div>
+            {/* 仅在底部保留一个极淡的渐变，确保文字可读性，不影响大面积色彩 */}
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0a0a0a]/40 to-transparent"></div>
           </header>
 
-          <div className="z-10 flex flex-col justify-between flex-1 p-6 md:p-8 transition-all duration-500">
+          <div className="z-10 flex flex-col justify-between flex-1 p-6 md:p-8 transition-all">
             <article className="flex flex-col items-start gap-2 md:gap-3">
-              {/* 分类标签 */}
               <PostCategory category={category} />
-              
-              {/* 标题优化：font-extrabold 解决压扁感，antialiased 解决模糊 */}
               <h2
                 className={`${SIZE[size].title} font-extrabold text-white antialiased tracking-tight transition-colors group-hover:text-blue-100`}
               >
@@ -103,11 +73,8 @@ const GridCard = ({ post, size }: GridCardProps) => {
               </h2>
             </article>
             
-            {/* 时间部分与装饰 */}
             <div className="mt-4 border-t border-white/5 pt-4 opacity-50 flex justify-between items-center w-full">
               <PostTime date={date.created} />
-              
-              {/* 桌面端特有的箭头，增加指向性 */}
               <div className="hidden md:block transform transition-transform duration-300 group-hover:translate-x-1 text-white/40">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
