@@ -42,33 +42,19 @@ const GridCard = ({ post, size }: GridCardProps) => {
             SIZE[size].card
           )}
         >
-          {/* 背景光斑氛围 */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-[60px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-          <header
-            className={classNames(
-              'relative overflow-hidden shrink-0',
-              SIZE[size].image
-            )}
-          >
-            {/* 🛑 关键修复：移除所有 filter/blur，确保图片色彩准确 */}
+          <header className={classNames('relative overflow-hidden shrink-0', SIZE[size].image)}>
+            {/* ✅ 彻底移除所有遮罩层和滤镜，确保图片原彩清晰显示 */}
             <PostImage
               cover={cover}
               alt={title}
-              className={
-                'w-full h-full object-cover opacity-100 transition-all duration-700 group-hover:scale-110'
-              }
+              className={'w-full h-full object-cover opacity-100 transition-all duration-700 group-hover:scale-110'}
             />
-            {/* 仅在底部保留一个极淡的渐变，确保文字可读性，不影响大面积色彩 */}
-            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0a0a0a]/40 to-transparent"></div>
           </header>
 
           <div className="z-10 flex flex-col justify-between flex-1 p-6 md:p-8 transition-all">
             <article className="flex flex-col items-start gap-2 md:gap-3">
               <PostCategory category={category} />
-              <h2
-                className={`${SIZE[size].title} font-extrabold text-white antialiased tracking-tight transition-colors group-hover:text-blue-100`}
-              >
+              <h2 className={`${SIZE[size].title} font-extrabold text-white antialiased tracking-tight transition-colors group-hover:text-blue-100`}>
                 {title}
               </h2>
             </article>
