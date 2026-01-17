@@ -32,7 +32,7 @@ export const StatsWidget = ({ data }: { data: any[] }) => {
       id: 'default',
       title: '暂无公告',
       slug: '#', 
-      excerpt: '请在 Notion 中添加 type 为 Announcement 的内容...',
+      excerpt: 123',
       cover: DEFAULT_COVER
     }
   ]
