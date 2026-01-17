@@ -13,19 +13,10 @@ export const StatsWidget = ({ data }: { data: any }) => {
   const [mounted, setMounted] = useState(false)
 
   // 1. 数据解析 (增强容错性)
-  // 如果 data 还没传进来(undefined)，给默认空对象防止报错
   const post = data || {};
-  
-  // 获取封面：尝试多种字段可能
   const cover = post.pageCover || post.cover || ''; 
-  
-  // 获取标题
   const title = post.title || '暂无公告';
-  
-  // 获取摘要：优先 summary，其次 excerpt
   const summary = post.summary || post.excerpt || '暂无详细内容...';
-  
-  // 获取链接
   const slug = post.slug ? `/post/${post.slug}` : null;
 
   useEffect(() => {
@@ -128,7 +119,7 @@ export const StatsWidget = ({ data }: { data: any }) => {
                 className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-110 opacity-90"
               />
             ) : (
-              // 兜底背景：你喜欢的紫色渐变
+              // 兜底背景
               <div className="w-full h-full bg-gradient-to-br from-indigo-900 to-purple-900">
                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-[40px]"></div>
               </div>
@@ -148,4 +139,38 @@ export const StatsWidget = ({ data }: { data: any }) => {
                  <span className="text-[10px] font-bold text-white/80 tracking-widest uppercase">公告</span>
                </div>
 
-               <h2 className="text-xl md:text-2xl font-extrabold text-white leading-tig
+               <h2 className="text-xl md:text-2xl font-extrabold text-white leading-tight tracking-tight mb-2 group-hover/text:text-purple-300 transition-colors line-clamp-2">
+                 {title}
+               </h2>
+
+               <p className="text-xs text-gray-300/90 font-medium line-clamp-2 leading-relaxed">
+                 {summary}
+               </p>
+            </Wrapper>
+
+            {/* 下半部分：站长 ID 按钮 */}
+            <div className="w-full mt-4 relative z-20">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault(); 
+                  e.stopPropagation();
+                  setShowModal(true);
+                }} 
+                type="button" 
+                className="w-full h-9 rounded-xl flex items-center justify-center gap-2
+                  bg-white/10 backdrop-blur-md border border-white/10
+                  text-xs font-bold text-white tracking-wide
+                  transition-all duration-300
+                  hover:bg-white/20 hover:scale-[1.02] active:scale-95 active:bg-white/5"
+              >
+                <span className="text-sm">🆔</span>
+                <span>站长 ID</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </React.StrictMode>
+  )
+}
