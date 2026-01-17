@@ -32,7 +32,7 @@ export const StatsWidget = ({ data }: { data: any[] }) => {
       id: 'default',
       title: '暂无公告',
       slug: '#', 
-      excerpt: 123',
+      excerpt: '123',
       cover: DEFAULT_COVER
     }
   ]
