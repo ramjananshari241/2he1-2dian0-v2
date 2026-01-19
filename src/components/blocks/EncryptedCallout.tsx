@@ -130,7 +130,7 @@ export const EncryptedCallout = ({ block, children }: { block: any; children: an
               px-6 py-2.5 rounded-xl font-bold text-white whitespace-nowrap transition-all shadow-lg active:scale-95
               ${hasPassword 
                 ? 'bg-blue-600 hover:bg-blue-500' 
-                : 'bg-red-600 hover:bg-red-500 w-full sm:w-auto' // 无密码时用红色警示色，且显眼
+                : 'bg-blue-600 hover:bg-red-500 w-full sm:w-auto' // 无密码时用红色警示色，且显眼
               }
             `}
           >
