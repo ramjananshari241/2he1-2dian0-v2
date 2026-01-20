@@ -59,6 +59,7 @@ const Footer = ({
     >
       <div className="flex flex-col px-6 mx-auto items-left lg:w-screen-lg lg:px-11">
         <nav className="flex items-center justify-between py-4">
+          {/* 原有的 Logo 和面包屑代码（保持注释状态） */}
           {/* <div className="flex flex-row items-center justify-center gap-1.5">
             <Link href="/">
               <Logo logo={logo} />
@@ -70,7 +71,6 @@ const Footer = ({
                   size={15}
                 />
                 <p
-                  // href={path.href}
                   className="mr-8 text-xs tracking-wide leading-0 text-neutral-300 line-clamp-1 dark:text-neutral-500"
                 >
                   {path.text}
@@ -78,7 +78,25 @@ const Footer = ({
               </>
             )}
           </div> */}
-          <ThemeSwitch />
+
+          {/* 🟢 修改区域：将 ThemeSwitch 和 Admin 按钮包在一起 */}
+          <div className="flex items-center gap-3">
+            <ThemeSwitch />
+            
+            {/* 新增：Admin 入口按钮 (蓝色、低调、齿轮图标) */}
+            <Link 
+              href="/admin" 
+              target="_blank"
+              className="flex items-center justify-center w-6 h-6 rounded-full text-blue-500/30 hover:text-blue-500 hover:bg-blue-500/10 transition-all duration-300"
+              title="Admin Dashboard"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </Link>
+          </div>
+
         </nav>
         <section className="pt-2 pb-5 overflow-hidden text-neutral-400 dark:text-neutral-500">
           <div className="flex items-end justify-between w-full pb-2 my-2 text-xs  border-footer gap-x-2 dark:border-neutral-700">
