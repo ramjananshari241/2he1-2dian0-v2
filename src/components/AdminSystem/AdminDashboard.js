@@ -258,21 +258,30 @@ export default function AdminDashboard() {
   const isFormValid = form.title.trim() !== '' && form.category.trim() !== '' && form.date !== '';
 
   async function fetchData() {
-    setLoading(true); 
-    try { 
-       const r = await fetch('/api/admin/posts'); const d = await r.json(); if (d.success) { setPosts(d.posts || []); setOptions(d.options || { categories: [], tags: [] }); }
-       const rConf = await fetch('/api/admin/config'); const dConf = await rConf.json(); if (dConf.success) setSiteTitle(dConf.title);
-    } finally { setLoading(false); } 
-  }
-  useEffect(() => { if (mounted) fetchData(); }, [mounted]);
+    setLoading(true);
+    try {
+      // 1. 拨打我们测试成功的那个地址
+      const r = await fetch('/api/admin/posts'); 
+      const d = await r.json();
 
-  const updateSiteTitle = async () => {
-    const newTitle = prompt("请输入新的网站标题:", siteTitle);
-    if (newTitle && newTitle !== siteTitle) {
-        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
-        setSiteTitle(newTitle); setLoading(false);
+      // 2. 关键：因为你的接口返回的是 { success: true, posts: [...] }
+      // 所以我们要读取 d.posts
+      if (d.success && d.posts) {
+        setPosts(d.posts); // 这里的 setPosts 名字要对应你代码里定义的变量名
+      }
+
+      // 3. 同时获取一下配置信息
+      const rConf = await fetch('/api/admin/config');
+      const dConf = await rConf.json();
+      if (dConf.success && dConf.siteInfo) {
+        setSiteTitle(dConf.siteInfo.title);
+      }
+    } catch (error) {
+      console.error('前端抓取数据失败:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
   const handleNavClick = (idx) => { setNavIdx(idx); const modes = ['folder','covered','text','gallery']; setViewMode(modes[idx]); setSelectedFolder(null); };
 
