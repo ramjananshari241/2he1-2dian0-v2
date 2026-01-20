@@ -17,6 +17,7 @@ const nextConfig = {
     // 2.【关键新增】试图限制构建时的并发数
     // 这能减少同时下载图片的数量，降低 "VipsJpeg" 报错的概率
     experimental: {
+        appDir: true,
         workerThreads: false, // 禁用工作线程，降低并行度
         cpus: 1, // 强制只使用 1 个 CPU 核心（让它排队一个一个处理，而不是一窝蜂下载）
     },

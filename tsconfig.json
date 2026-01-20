@@ -1,9 +1,18 @@
 {
   "compilerOptions": {
-    "types": ["node", "glob"],
-    "typeRoots": ["node_modules/@types"],
+    "types": [
+      "node",
+      "glob"
+    ],
+    "typeRoots": [
+      "node_modules/@types"
+    ],
     "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -18,9 +27,24 @@
     "incremental": true,
     "baseUrl": "./",
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": [
+        "./*"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
-  "include": ["next-env.d.ts", "tailwind.config.ts", "**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "tailwind.config.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
