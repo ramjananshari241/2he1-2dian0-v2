@@ -1,9 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
-// ==========================================
-// 1. 图标库 (完整版)
-// ==========================================
+// 图标库 (保持不变)
 const Icons = {
   Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
   CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
@@ -23,7 +21,7 @@ const Icons = {
   Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
 };
 
-// ================= 2. 样式 & 辅助组件 =================
+// 样式：修改 fab-scroll 的 bottom 为 100px
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -89,8 +87,7 @@ const GlobalStyle = () => (
     .input:active { transform: scale(0.95); }
     .input:focus { box-shadow: 0 0 0 2.5px #2f303d; }
     .search-icon { position: absolute; left: 1rem; fill: #bdbecb; width: 1rem; height: 1rem; pointer-events: none; z-index: 1; }
-    /* 🟢 修复悬浮按钮位置：底部距离改为 120px，避开客服组件 */
-    .fab-scroll { position: fixed; right: 30px; bottom: 120px; display: flex; flex-direction: column; gap: 10px; z-index: 99; }
+    .fab-scroll { position: fixed; right: 30px; bottom: 100px; display: flex; flex-direction: column; gap: 10px; z-index: 99; }
     .fab-btn { width: 45px; height: 45px; background: greenyellow; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
     .fab-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(173, 255, 47, 0.4); }
     .btn-disabled { opacity: 0.5; cursor: not-allowed; }
@@ -168,10 +165,106 @@ const cleanAndFormat = (input) => {
   } catch (e) { return input; }
 };
 
+// ==========================================
+// 核心修复：状态机解析器复原
+// ==========================================
+const parseContentToBlocks = (md) => {
+  if(!md) return [];
+  const lines = md.split(/\r?\n/);
+  const res = [];
+  
+  let buffer = []; 
+  let isLocking = false; 
+  let lockPwd = ''; 
+  let lockBuffer = [];  
+
+  const stripMd = (str) => { const match = str.match(/(?:!|)?\[.*?\]\((.*?)\)/); return match ? match[1] : str; };
+
+  const flushBuffer = () => {
+    if (buffer.length > 0) {
+      const joined = buffer.map(stripMd).join('\n').trim();
+      if (joined) {
+         if (joined.startsWith('`') && joined.endsWith('`') && joined.length > 1) {
+            res.push({ id: Date.now() + Math.random(), type: 'note', content: joined.slice(1, -1) });
+         } else {
+            res.push({ id: Date.now() + Math.random(), type: 'text', content: joined });
+         }
+      }
+      buffer = [];
+    }
+  };
+
+  // 状态机循环
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // A. 识别 :::lock (新建时)
+    if (!isLocking && trimmed.startsWith(':::lock')) {
+      flushBuffer(); isLocking = true;
+      lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
+      continue;
+    }
+    if (isLocking && trimmed === ':::') {
+      isLocking = false;
+      const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
+      res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+      lockBuffer = [];
+      continue;
+    }
+
+    // B. 识别 > 🔒 (Notion 返回时)
+    // 关键修正：确保能精准捕捉 NotionToMarkdown 生成的引用块格式
+    if (!isLocking && trimmed.match(/^>\s*🔒/)) {
+      flushBuffer(); isLocking = true;
+      const match = trimmed.match(/LOCK:(.*?)\*\*/);
+      lockPwd = match ? match[1].trim() : '';
+      continue;
+    }
+    
+    // B.1 结束条件：只要当前行不再是引用 (> 开头) 且不是空行，就认为 lock 结束
+    if (isLocking && !trimmed.startsWith('>') && !trimmed.startsWith(':::') && trimmed !== '') {
+       isLocking = false;
+       const joinedLock = lockBuffer.join('\n').trim();
+       res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+       lockBuffer = [];
+       i--; // 回退一行，重新作为普通行处理
+       continue;
+    }
+
+    if (isLocking) {
+      // 去除引用符号 >
+      let contentLine = line;
+      if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
+      else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
+      
+      // 忽略分隔符
+      if (contentLine.trim() === '---') continue;
+      // 忽略空行
+      if (contentLine.trim() === '') continue;
+
+      lockBuffer.push(contentLine);
+      continue;
+    }
+
+    // 普通行
+    if (trimmed.startsWith('# ')) { flushBuffer(); res.push({ id: Date.now() + Math.random(), type: 'h1', content: trimmed.replace('# ', '') }); continue; }
+    if (!trimmed) { flushBuffer(); continue; }
+    buffer.push(line);
+  }
+  
+  if (isLocking) {
+      const joinedLock = lockBuffer.join('\n').trim();
+      res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+  } else {
+      flushBuffer();
+  }
+  return res;
+};
+
 const BlockBuilder = ({ blocks, setBlocks }) => {
   const [movingId, setMovingId] = useState(null);
 
-  // 视角锁定
   const scrollToBlock = (id) => {
     setTimeout(() => {
        const el = document.getElementById(`block-${id}`);
@@ -285,30 +378,14 @@ const NotionView = ({ blocks }) => {
   );
 };
 
-// ==========================================
-// 4. 主组件
-// ==========================================
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [view, setView] = useState('list');
-  const [posts, setPosts] = useState([]);
-  const [options, setOptions] = useState({ categories: [], tags: [] });
-  const [activeTab, setActiveTab] = useState('Post');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAllTags, setShowAllTags] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState(null);
-  const [previewData, setPreviewData] = useState(null);
-  
-  // 编辑器状态
-  const [form, setForm] = useState({ title: '', slug: '', excerpt: '', content: '', category: '', tags: '', cover: '', status: 'Published', type: 'Post', date: '' });
-  const [currentId, setCurrentId] = useState(null);
+  const [view, setView] = useState('list'), [viewMode, setViewMode] = useState('covered'), [posts, setPosts] = useState([]), [options, setOptions] = useState({ categories: [], tags: [] }), [loading, setLoading] = useState(false), [activeTab, setActiveTab] = useState('Post'), [searchQuery, setSearchQuery] = useState(''), [showAllTags, setShowAllTags] = useState(false), [selectedFolder, setSelectedFolder] = useState(null), [previewData, setPreviewData] = useState(null);
+  const [form, setForm] = useState({ title: '', slug: '', excerpt: '', content: '', category: '', tags: '', cover: '', status: 'Published', type: 'Post', date: '' }), [currentId, setCurrentId] = useState(null);
   const [siteTitle, setSiteTitle] = useState('PROBLOG');
   const [navIdx, setNavIdx] = useState(1); 
   const [expandedStep, setExpandedStep] = useState(1);
   const [editorBlocks, setEditorBlocks] = useState([]);
-  
-  // 🟢 防抖状态锁
   const [isDeploying, setIsDeploying] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -317,18 +394,9 @@ export default function AdminDashboard() {
   async function fetchPosts() {
     setLoading(true); 
     try { 
-       const r = await fetch('/api/admin/posts'); 
-       if(!r.ok) throw new Error(`API Error: ${r.status}`);
-       const d = await r.json(); 
-       if (d.success) { setPosts(d.posts || []); setOptions(d.options || { categories: [], tags: [] }); }
-       
-       const rConf = await fetch('/api/admin/config');
-       if (rConf.ok) {
-           const dConf = await rConf.json(); 
-           if (dConf.success && dConf.siteInfo) setSiteTitle(dConf.siteInfo.title);
-       }
-    } catch(e) { console.warn(e); } 
-    finally { setLoading(false); } 
+       const r = await fetch('/api/admin/posts'); const d = await r.json(); if (d.success) { setPosts(d.posts || []); setOptions(d.options || { categories: [], tags: [] }); }
+       const rConf = await fetch('/api/admin/config'); const dConf = await rConf.json(); if (dConf.success) setSiteTitle(dConf.siteInfo.title);
+    } finally { setLoading(false); } 
   }
   useEffect(() => { if (mounted) fetchPosts(); }, [mounted]);
 
@@ -337,103 +405,30 @@ export default function AdminDashboard() {
     if (view === 'edit') {
       window.history.pushState({ view: 'edit' }, '', '?mode=edit');
     } else {
-      if (window.location.search.includes('mode=edit')) {
-         window.history.back();
-      }
+      if (window.location.search.includes('mode=edit')) window.history.back();
     }
     const onPopState = () => { if (view === 'edit') setView('list'); };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // 🟢 核心修复：状态机解析逻辑 (解决二次编辑炸裂)
-  const parseContentToBlocks = (md) => {
-    if(!md) return [];
-    const lines = md.split(/\r?\n/);
-    const res = [];
-    let buffer = []; let isLocking = false; let lockPwd = ''; let lockBuffer = [];  
-    const stripMd = (str) => { const match = str.match(/(?:!|)?\[.*?\]\((.*?)\)/); return match ? match[1] : str; };
-    const flushBuffer = () => {
-      if (buffer.length > 0) {
-        const joined = buffer.map(stripMd).join('\n').trim();
-        if (joined) {
-           if (joined.startsWith('`') && joined.endsWith('`') && joined.length > 1) {
-              res.push({ id: Date.now() + Math.random(), type: 'note', content: joined.slice(1, -1) });
-           } else {
-              res.push({ id: Date.now() + Math.random(), type: 'text', content: joined });
-           }
-        }
-        buffer = [];
-      }
-    };
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmed = line.trim();
-
-      // A. 新建时的语法 :::lock
-      if (!isLocking && trimmed.startsWith(':::lock')) {
-        flushBuffer(); isLocking = true;
-        lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
-        continue;
-      }
-      if (isLocking && trimmed === ':::') {
-        isLocking = false;
-        const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
-        res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-        lockBuffer = [];
-        continue;
-      }
-
-      // B. Notion 返回的 Markdown 语法 > 🔒
-      if (!isLocking && trimmed.match(/^>\s*🔒\s*\*\*LOCK:(.*?)\*\*/)) {
-        flushBuffer(); isLocking = true;
-        const match = trimmed.match(/LOCK:(.*?)\*\*/);
-        lockPwd = match ? match[1].trim() : '';
-        continue;
-      }
-      
-      // C. 结束条件加强
-      if (isLocking && !trimmed.startsWith('>') && !trimmed.startsWith(':::') && trimmed !== '') {
-         isLocking = false;
-         const joinedLock = lockBuffer.join('\n').trim();
-         res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-         lockBuffer = [];
-         i--; 
-         continue;
-      }
-
-      if (isLocking) {
-        let contentLine = line;
-        if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
-        else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
-        if (contentLine.trim() === '---') continue;
-        if (contentLine.trim() === '') continue;
-        lockBuffer.push(contentLine);
-        continue;
-      }
-
-      if (trimmed.startsWith('# ')) { flushBuffer(); res.push({ id: Date.now() + Math.random(), type: 'h1', content: trimmed.replace('# ', '') }); continue; }
-      if (!trimmed) { flushBuffer(); continue; }
-      buffer.push(line);
+  const handleEdit = async (id) => {
+    setLoading(true);
+    const r = await fetch(`/api/admin/post?id=${id}`);
+    const d = await r.json();
+    if (d.success) {
+      setForm(d.post);
+      setEditorBlocks(parseContentToBlocks(d.post.content));
+      setCurrentId(id);
+      setView('edit');
     }
-    
-    // 收尾
-    if (isLocking) {
-        const joinedLock = lockBuffer.join('\n').trim();
-        res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-    } else {
-        flushBuffer();
-    }
-    return res;
+    setLoading(false);
   };
 
-  const handlePreview = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if(d.success && d.post && d.post.rawBlocks) setPreviewData(d.post); }).finally(()=>setLoading(false)); };
-  const handleEdit = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if (d.success) { setForm(d.post); setEditorBlocks(parseContentToBlocks(d.post.content)); setCurrentId(p.id); setView('edit'); setExpandedStep(1); } }).finally(()=>setLoading(false)); };
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
   const handleSave = async () => {
-    if (isDeploying) return alert("请等待更新完成...");
+    if (isDeploying) return alert("请等待上一次更新完成（约60秒）...");
     setLoading(true);
     const fullContent = editorBlocks.map(b => {
       if (b.type === 'h1') return `# ${b.content}`;
@@ -445,12 +440,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/post', {
         method: 'POST',
-        body: JSON.stringify({ 
-          ...form, 
-          content: fullContent, 
-          id: currentId,
-          type: form.type || 'Post' 
-        })
+        body: JSON.stringify({ ...form, content: fullContent, id: currentId, type: form.type || 'Post' })
       });
       const d = await res.json();
       
@@ -469,14 +459,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateSiteTitle = async () => {
-    const newTitle = prompt("请输入新的网站标题:", siteTitle);
-    if (newTitle && newTitle !== siteTitle) {
-        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
-        setSiteTitle(newTitle); setLoading(false);
-    }
-  };
-
   const triggerDeploy = async () => {
     setIsDeploying(true);
     try { await fetch('/api/admin/deploy'); } catch(e) {}
@@ -489,6 +471,14 @@ export default function AdminDashboard() {
         await triggerDeploy();
         alert('已触发更新！请耐心等待约 1 分钟。');
      }
+  };
+
+  const updateSiteTitle = async () => {
+    const newTitle = prompt("请输入新的网站标题:", siteTitle);
+    if (newTitle && newTitle !== siteTitle) {
+        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
+        setSiteTitle(newTitle); setLoading(false);
+    }
   };
 
   const deleteTagOption = (e, tagToDelete) => {
@@ -519,27 +509,22 @@ export default function AdminDashboard() {
   const displayTags = (options.tags && options.tags.length > 0) ? (showAllTags ? options.tags : options.tags.slice(0, 12)) : [];
 
   if (!mounted) return null;
+  const getStatusStyle = (status) => { const isDraft = status === 'Draft'; return { borderColor: isDraft ? '#f97316' : 'transparent', color: isDraft ? '#f97316' : 'greenyellow', label: isDraft ? '📝 草稿' : '🚀 已发布' }; };
 
   return (
     <div style={{ minHeight: '100vh', background: '#303030', padding: '40px 20px' }}>
       <GlobalStyle />
       {loading && <FullScreenLoader />}
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
              {view === 'list' && <SearchInput value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />}
              <div style={{display:'flex', flexDirection:'column', justifyContent:'center'}}>
-                <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '1px', display:'flex', alignItems:'center', gap:'10px' }}>
-                   {siteTitle} <span onClick={updateSiteTitle} style={{cursor:'pointer', opacity:0.5}} title="修改网站标题"><Icons.Settings /></span>
-                </div>
+                <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '1px', display:'flex', alignItems:'center', gap:'10px' }}>{siteTitle} <span onClick={updateSiteTitle} style={{cursor:'pointer', opacity:0.5}} title="修改网站标题"><Icons.Settings /></span></div>
              </div>
            </div>
-           
            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-             <button onClick={handleManualDeploy} style={{background:'#424242', border: isDeploying ? '1px solid #555' : '1px solid greenyellow', opacity: isDeploying ? 0.5 : 1, padding:'10px', borderRadius:'8px', color: isDeploying ? '#888' : 'greenyellow', cursor: isDeploying ? 'not-allowed' : 'pointer'}} title="立即更新博客前端">
-               {/* 🟢 只显示图标 */}
-               <Icons.Refresh />
-             </button>
+             <button onClick={handleManualDeploy} style={{background:'#424242', border: isDeploying ? '1px solid #555' : '1px solid greenyellow', opacity: isDeploying ? 0.5 : 1, padding:'10px', borderRadius:'8px', color: isDeploying ? '#888' : 'greenyellow', cursor: isDeploying ? 'not-allowed' : 'pointer'}} title="立即更新博客前端"><Icons.Refresh /></button>
              <button onClick={() => window.open('https://pan.cloudreve.org/xxx', '_blank')} style={{background:'#a855f7', border:'none', padding:'10px 20px', borderRadius:'8px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px', fontWeight:'bold', fontSize:'14px'}} className="btn-ia"><Icons.Tutorial /> 教程</button>
              {view === 'list' ? <AnimatedBtn text="发布新内容" onClick={handleCreate} /> : <AnimatedBtn text="返回列表" onClick={() => setView('list')} />}
            </div>
@@ -551,11 +536,10 @@ export default function AdminDashboard() {
                <div style={{background:'#424242', padding:'5px', borderRadius:'12px', display:'flex'}}>{['Post', 'Widget', 'Page'].map(t => <button key={t} onClick={() => { setActiveTab(t); setSelectedFolder(null); }} style={activeTab === t ? {padding:'8px 20px', border:'none', background:'#555', color:'#fff', borderRadius:'10px', fontWeight:'bold', fontSize:'13px', cursor:'pointer'} : {padding:'8px 20px', border:'none', background:'none', color:'#888', borderRadius:'10px', fontWeight:'bold', fontSize:'13px', cursor:'pointer'}}>{t === 'Page' ? '自定义页面' : t === 'Post' ? '已发布' : '组件'}</button>)}</div>
                <SlidingNav activeIdx={navIdx} onSelect={handleNavClick} />
             </div>
-            
             <div style={viewMode === 'gallery' || viewMode === 'folder' ? {display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'15px'} : {}}>
               {viewMode === 'folder' && options.categories.map(cat => <div key={cat} onClick={()=>{setSelectedFolder(cat); handleNavClick(1);}} style={{padding:'15px', background:'#424242', borderRadius:'10px', display:'flex', alignItems:'center', gap:'12px', border:'1px solid #555', cursor:'pointer'}} className="btn-ia"><Icons.FolderIcon />{cat}</div>)}
               {viewMode !== 'folder' && filtered.map(p => {
-                const st = (p.status === 'Draft') ? { borderColor: '#f97316', color: '#f97316', label: '📝 草稿' } : { borderColor: 'transparent', color: 'greenyellow', label: '🚀 已发布' };
+                const st = getStatusStyle(p.status);
                 return (
                   <div key={p.id} onClick={() => handlePreview(p)} className="card-item" style={{...(viewMode === 'text' ? {display:'flex', alignItems:'center', padding:'16px 20px'} : viewMode === 'gallery' ? {display:'flex', flexDirection:'column', height:'auto'} : {}), background:'#424242', borderRadius:'12px', marginBottom:'8px', border: `1px solid ${st.borderColor}`}}>
                     {viewMode === 'covered' && <><div style={{width:'160px', flexShrink:0, background:'#303030', display:'flex', alignItems:'center', justifyContent:'center'}}>{p.cover ? <img src={p.cover} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{fontSize:'28px', color:'#444'}}>{activeTab[0]}</div>}</div><div style={{padding:'20px 35px', flex:1}}><div style={{fontWeight:'bold', fontSize:'20px', color:'#fff', marginBottom:'8px'}}>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8, display:'flex', alignItems:'center', gap:'10px'}}><span style={{border:`1px solid ${st.color}`, color:st.color, padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'}}>{st.label}</span>{p.category} · {p.date}</div></div></>}
@@ -597,7 +581,7 @@ export default function AdminDashboard() {
             </div>
 
             <button onClick={handleSave} disabled={!isFormValid} style={{width:'100%', padding:'20px', background:isFormValid?'#fff':'#222', color:isFormValid?'#000':'#666', border:'none', borderRadius:'12px', fontWeight:'bold', fontSize:'16px', marginTop:'40px', cursor:isFormValid?'pointer':'not-allowed', transition:'0.3s'}}>{currentId ? '保存修改' : '确认发布'}</button>
-          </div>
+          </main>
         )}
         {previewData && <div className="modal-bg" onClick={()=>setPreviewData(null)}><div className="modal-box" onClick={e=>e.stopPropagation()}><div style={{padding:'20px 25px', borderBottom:'1px solid #333', display:'flex', justifyContent:'space-between', alignItems:'center'}}><strong>预览: {previewData.title}</strong><button onClick={()=>setPreviewData(null)} style={{background:'none', border:'none', color:'#666', fontSize:'24px', cursor:'pointer'}}>×</button></div><div className="modal-body"><NotionView blocks={previewData.rawBlocks} /></div></div></div>}
       </div>
