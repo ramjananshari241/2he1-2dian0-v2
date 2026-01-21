@@ -1,9 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
-// ==========================================
-// 1. 图标库 (保持不变)
-// ==========================================
+// 图标库
 const Icons = {
   Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
   CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
@@ -23,9 +21,7 @@ const Icons = {
   Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
 };
 
-// ==========================================
-// 2. 样式表
-// ==========================================
+// 样式与辅助组件
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -102,7 +98,6 @@ const GlobalStyle = () => (
   `}} />
 );
 
-// --- 3. 辅助组件 ---
 const SearchInput = ({ value, onChange }) => (
   <div className="group">
     <svg className="search-icon" aria-hidden="true" viewBox="0 0 24 24"><g><path d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"></path></g></svg>
@@ -171,7 +166,7 @@ const cleanAndFormat = (input) => {
 };
 
 // ==========================================
-// 4. 积木编辑器 (核心修复：状态机解析)
+// 4. 积木编辑器
 // ==========================================
 const parseContentToBlocks = (md) => {
   if(!md) return [];
@@ -198,7 +193,7 @@ const parseContentToBlocks = (md) => {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // A. 识别 :::lock
+    // A. :::lock
     if (!isLocking && trimmed.startsWith(':::lock')) {
       flushBuffer(); isLocking = true;
       lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
@@ -212,13 +207,15 @@ const parseContentToBlocks = (md) => {
       continue;
     }
 
-    // B. 识别 Notion 原生 > 🔒
-    if (!isLocking && trimmed.match(/^>\s*🔒\s*\*\*LOCK:(.*?)\*\*/)) {
+    // B. > 🔒 (Notion 返回格式)
+    if (!isLocking && trimmed.match(/^>\s*🔒/)) {
       flushBuffer(); isLocking = true;
       const match = trimmed.match(/LOCK:(.*?)\*\*/);
       lockPwd = match ? match[1].trim() : '';
       continue;
     }
+    
+    // C. 结束 Lock 模式检测
     if (isLocking && !trimmed.startsWith('>') && !trimmed.startsWith(':::') && trimmed !== '') {
        isLocking = false;
        const joinedLock = lockBuffer.join('\n').trim();
@@ -230,10 +227,13 @@ const parseContentToBlocks = (md) => {
 
     if (isLocking) {
       let contentLine = line;
+      // 移除 Notion 引用符号
       if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
       else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
+      
       if (contentLine.trim() === '---') continue;
       if (contentLine.trim() === '') continue;
+
       lockBuffer.push(contentLine);
       continue;
     }
@@ -369,7 +369,7 @@ const NotionView = ({ blocks }) => {
 };
 
 // ==========================================
-// 5. 顶层入口组件
+// 5. 主组件
 // ==========================================
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
@@ -411,52 +411,24 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // 🟢 修复：handleEdit (防御性检查)
   const handleEdit = async (id) => {
     setLoading(true);
-    try {
-        const r = await fetch(`/api/admin/post?id=${id}`);
-        if (!r.ok) throw new Error(`API Error: ${r.status}`);
-        
-        const d = await r.json();
-        if (d.success && d.post) {
-          setForm(d.post);
-          // 如果 content 为 null 或 undefined，传空字符串
-          setEditorBlocks(parseContentToBlocks(d.post.content || ''));
-          // 只有当 rawBlocks 存在且为数组时，才设置预览数据
-          if (Array.isArray(d.post.rawBlocks)) setPreviewData(d.post);
-          
-          setCurrentId(id);
-          setView('edit');
-        } else {
-          alert(`加载失败: ${d.error || '数据格式错误'}`);
-        }
-    } catch(e) { 
-        alert("网络请求错误: " + e.message); 
-    } finally { 
-        setLoading(false); 
+    const r = await fetch(`/api/admin/post?id=${id}`);
+    const d = await r.json();
+    if (d.success) {
+      setForm(d.post);
+      setEditorBlocks(parseContentToBlocks(d.post.content));
+      setCurrentId(id);
+      setView('edit');
     }
+    setLoading(false);
   };
 
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
-  // 🟢 修复：handlePreview (防御性检查)
-  const handlePreview = async (p) => {
-    setLoading(true);
-    try {
-        const r = await fetch(`/api/admin/post?id=${p.id}`);
-        if (!r.ok) throw new Error(`API Error: ${r.status}`);
-        const d = await r.json();
-        // 只要 d.post 存在就尝试显示，不强求 rawBlocks
-        if (d.success && d.post) {
-            setPreviewData(d.post);
-        } else {
-            alert('预览失败: ' + (d.error || '无数据'));
-        }
-    } catch(e) { } finally { setLoading(false); }
-  };
-  
-  const handleSave = async () => {
+  // ✅ 修复：在 handleSave 里加入 e.stopPropagation
+  const handleSave = async (e) => {
+    if(e) e.stopPropagation(); // 防止冒泡
     if (isDeploying) return alert("请等待上一次更新完成（约60秒）...");
     setLoading(true);
     const fullContent = editorBlocks.map(b => {
@@ -574,7 +546,7 @@ export default function AdminDashboard() {
               {viewMode !== 'folder' && filtered.map(p => {
                 const st = getStatusStyle(p.status);
                 return (
-                  <div key={p.id} onClick={() => handlePreview(p)} className="card-item" style={{...(viewMode === 'text' ? {display:'flex', alignItems:'center', padding:'16px 20px'} : viewMode === 'gallery' ? {display:'flex', flexDirection:'column', height:'auto'} : {}), background:'#424242', borderRadius:'12px', marginBottom:'8px', border: `1px solid ${st.borderColor}`}}>
+                  <div key={p.id} onClick={(e) => { e.stopPropagation(); handlePreview(p); }} className="card-item" style={{...(viewMode === 'text' ? {display:'flex', alignItems:'center', padding:'16px 20px'} : viewMode === 'gallery' ? {display:'flex', flexDirection:'column', height:'auto'} : {}), background:'#424242', borderRadius:'12px', marginBottom:'8px', border: `1px solid ${st.borderColor}`}}>
                     {viewMode === 'covered' && <><div style={{width:'160px', flexShrink:0, background:'#303030', display:'flex', alignItems:'center', justifyContent:'center'}}>{p.cover ? <img src={p.cover} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{fontSize:'28px', color:'#444'}}>{activeTab[0]}</div>}</div><div style={{padding:'20px 35px', flex:1}}><div style={{fontWeight:'bold', fontSize:'20px', color:'#fff', marginBottom:'8px'}}>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8, display:'flex', alignItems:'center', gap:'10px'}}><span style={{border:`1px solid ${st.color}`, color:st.color, padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'}}>{st.label}</span>{p.category} · {p.date}</div></div></>}
                     {viewMode === 'text' && <div style={{flex:1, display:'flex', alignItems:'center'}}><div style={{flex:1, fontSize:'14px', display:'flex', alignItems:'center', gap:'10px'}}><span style={{width:'6px', height:'6px', borderRadius:'50%', background:st.color}}></span>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8}}>{p.category} · {p.date}</div></div>}
                     {viewMode === 'gallery' && <><div style={{height:'140px', background:'#303030', display:'flex', alignItems:'center', justifyContent:'center', position:'relative'}}><div style={{position:'absolute', top:'10px', right:'10px', background:st.color, color:'#000', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'}}>{p.status === 'Draft' ? 'DRAFT' : 'PUB'}</div>{p.cover ? <img src={p.cover} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{fontSize:'40px', color:'#444'}}>{activeTab[0]}</div>}</div><div style={{padding:'15px'}}><div style={{fontSize:'14px', fontWeight:'bold', color:'#fff'}}>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8}}>{p.category} · {p.date}</div></div></>}

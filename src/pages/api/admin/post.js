@@ -8,9 +8,8 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// === 1. 解析器 ===
+// === 1. 强力解析器 (新增：链接自动转图片) ===
 function parseLinesToChildren(text) {
-  if (!text) return [];
   const lines = text.split(/\r?\n/);
   const blocks = [];
   
@@ -18,15 +17,24 @@ function parseLinesToChildren(text) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    const mdMatch = trimmed.match(/^!\[.*?\]\((.*?)\)$/) || trimmed.match(/^\[.*?\]\((.*?)\)$/);
-    let potentialUrl = mdMatch ? mdMatch[1] : trimmed;
-    const urlMatch = potentialUrl.match(/https?:\/\/[^\s)\]"]+/);
-    const cleanUrl = urlMatch ? urlMatch[0] : null;
+    // 🟢 修复：识别纯链接并转为 Image/Video 块
+    const urlMatch = trimmed.match(/^https?:\/\/[^\s]+$/);
+    if (urlMatch) {
+        const url = urlMatch[0];
+        if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url)) {
+            blocks.push({ object: 'block', type: 'image', image: { type: 'external', external: { url } } });
+            continue;
+        }
+        if (/\.(mp4|mov|webm|ogg|mkv)(\?|$)/i.test(url)) {
+            blocks.push({ object: 'block', type: 'video', video: { type: 'external', external: { url } } });
+            continue;
+        }
+    }
 
-    if (cleanUrl && /\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|mov|webm|ogg|mkv)(\?|$)/i.test(cleanUrl)) {
-      const isVideo = /\.(mp4|mov|webm|ogg|mkv)(\?|$)/i.test(cleanUrl);
-      if (isVideo) blocks.push({ object: 'block', type: 'video', video: { type: 'external', external: { url: cleanUrl } } });
-      else blocks.push({ object: 'block', type: 'image', image: { type: 'external', external: { url: cleanUrl } } });
+    // Markdown 图片语法
+    const mdMatch = trimmed.match(/^!\[.*?\]\((.*?)\)$/);
+    if (mdMatch) {
+      blocks.push({ object: 'block', type: 'image', image: { type: 'external', external: { url: mdMatch[1] } } });
       continue;
     }
 
@@ -78,13 +86,11 @@ export default async function handler(req, res) {
   const databaseId = process.env.NOTION_DATABASE_ID || process.env.NOTION_PAGE_ID;
 
   try {
-    // GET
     if (req.method === 'GET') {
-      if (!id) return res.status(400).json({ success: false, error: 'Missing ID' });
       const page = await notion.pages.retrieve({ page_id: id });
       const mdblocks = await n2m.pageToMarkdown(id);
       
-      // 容错处理：确保 mdblocks 是数组
+      // 容错处理
       const safeMdBlocks = Array.isArray(mdblocks) ? mdblocks : [];
 
       safeMdBlocks.forEach(b => {
@@ -123,17 +129,17 @@ export default async function handler(req, res) {
       });
     }
 
-    // POST
     if (req.method === 'POST') {
       const body = JSON.parse(req.body);
       const { id, title, content, slug, excerpt, category, tags, status, date, type, cover } = body;
       const newBlocks = mdToBlocks(content);
-      const props = {};
 
+      const props = {};
       props["title"] = { title: [{ text: { content: title || "无标题" } }] };
       if (slug) props["slug"] = { rich_text: [{ text: { content: slug } }] };
       props["excerpt"] = { rich_text: [{ text: { content: excerpt || "" } }] };
       if (category) props["category"] = { select: { name: category } };
+      
       if (tags) {
         const tagList = tags.split(',').filter(t => t.trim()).map(t => ({ name: t.trim() }));
         if (tagList.length > 0) props["tags"] = { multi_select: tagList };
