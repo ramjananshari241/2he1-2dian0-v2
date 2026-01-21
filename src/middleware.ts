@@ -4,37 +4,36 @@ import type { NextRequest } from 'next/server'
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // 1. 严格限制：只拦截 /admin 开头的路径
-  // 如果不是 admin 页面，直接放行，绝对不会干扰首页
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next()
-  }
+  // 🔒 拦截逻辑
+  if (pathname.startsWith('/admin')) {
+    const basicAuth = req.headers.get('authorization')
 
-  // 2. 验证逻辑
-  const basicAuth = req.headers.get('authorization')
+    if (basicAuth) {
+      const authValue = basicAuth.split(' ')[1]
+      const [user, pwd] = atob(authValue).split(':')
 
-  if (basicAuth) {
-    const authValue = basicAuth.split(' ')[1]
-    const [user, pwd] = atob(authValue).split(':')
+      // 读取 Vercel 环境变量
+      const validUser = process.env.AUTH_USER || 'admin'
+      const validPass = process.env.AUTH_PASS || '123456'
 
-    const validUser = process.env.AUTH_USER || 'admin'
-    const validPass = process.env.AUTH_PASS || '123456'
-
-    if (user === validUser && pwd === validPass) {
-      return NextResponse.next()
+      if (user === validUser && pwd === validPass) {
+        return NextResponse.next()
+      }
     }
+
+    // 验证失败返回 401
+    return new NextResponse(null, {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': 'Basic realm="Secure Area"',
+      },
+    })
   }
 
-  // 3. 验证失败返回 401 (Body 为 null 以兼容 Vercel)
-  return new NextResponse(null, {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': 'Basic realm="Secure Admin Area"',
-    },
-  })
+  return NextResponse.next()
 }
 
-// 4. 配置匹配器
+// ⚠️ 关键配置：确保匹配所有 admin 路径
 export const config = {
-  matcher: ['/admin/:path*', '/admin'],
+  matcher: ['/admin', '/admin/:path*'],
 }

@@ -8,7 +8,7 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// === 1. 行级解析器 (保留正则清洗) ===
+// === 1. 强力解析器 (支持媒体、标题、加密块内部解析) ===
 function parseLinesToChildren(text) {
   const lines = text.split(/\r?\n/);
   const blocks = [];
@@ -37,7 +37,7 @@ function parseLinesToChildren(text) {
   return blocks;
 }
 
-// === 2. 状态机转换器 (核心：严防加密块拆分) ===
+// === 2. 积木转换器 (状态机逻辑) ===
 function mdToBlocks(markdown) {
   if (!markdown) return [];
   const rawChunks = markdown.split(/\n{2,}/);
@@ -78,11 +78,14 @@ export default async function handler(req, res) {
   const databaseId = process.env.NOTION_DATABASE_ID || process.env.NOTION_PAGE_ID;
 
   try {
+    // GET: 获取详情 (用于回显)
     if (req.method === 'GET') {
       const page = await notion.pages.retrieve({ page_id: id });
       const mdblocks = await n2m.pageToMarkdown(id);
+      const p = page.properties;
       
-      // 回显处理：还原 :::lock
+      // 这里的逻辑主要是为了把 Notion 的 callout 还原回 :::lock 给前端
+      let rawContent = "";
       mdblocks.forEach(b => {
         if (b.type === 'callout' && b.parent.includes('LOCK:')) {
           const pwdMatch = b.parent.match(/LOCK:(.*?)(\n|$)/);
@@ -94,7 +97,8 @@ export default async function handler(req, res) {
         }
       });
       const mdStringObj = n2m.toMarkdownString(mdblocks);
-      const p = page.properties;
+      
+      // 获取原始块数据用于预览组件
       let rawBlocks = [];
       try { const blocksRes = await notion.blocks.children.list({ block_id: id }); rawBlocks = blocksRes.results; } catch (e) {}
 
@@ -117,6 +121,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // POST: 保存/创建
     if (req.method === 'POST') {
       const body = JSON.parse(req.body);
       const { id, title, content, slug, excerpt, category, tags, status, date, type, cover } = body;
@@ -127,30 +132,43 @@ export default async function handler(req, res) {
       if (slug) props["slug"] = { rich_text: [{ text: { content: slug } }] };
       props["excerpt"] = { rich_text: [{ text: { content: excerpt || "" } }] };
       if (category) props["category"] = { select: { name: category } };
+      
       if (tags) {
         const tagList = tags.split(',').filter(t => t.trim()).map(t => ({ name: t.trim() }));
         if (tagList.length > 0) props["tags"] = { multi_select: tagList };
       }
+      // 兼容 Status 和 Select
       props["status"] = { status: { name: status || "Published" } }; 
       props["type"] = { select: { name: type || "Post" } };
       if (date) props["date"] = { date: { start: date } };
       if (cover && cover.startsWith('http')) props["cover"] = { url: cover };
 
       if (id) {
+        // 更新属性
         await notion.pages.update({ page_id: id, properties: props });
-        // 先删旧
+        
+        // 删除旧内容
         const children = await notion.blocks.children.list({ block_id: id });
         if (children.results.length > 0) {
+            // 分批并发删除
             const chunks = [];
-            for (let i = 0; i < children.results.length; i += 3) chunks.push(children.results.slice(i, i + 3));
-            for (const chunk of chunks) await Promise.all(chunk.map(b => notion.blocks.delete({ block_id: b.id })));
+            for (let i = 0; i < children.results.length; i += 3) {
+                chunks.push(children.results.slice(i, i + 3));
+            }
+            for (const chunk of chunks) {
+                await Promise.all(chunk.map(b => notion.blocks.delete({ block_id: b.id })));
+            }
         }
-        // 后写新 (最大化效率)
+        
+        // 极速写入 (100个一批)
         for (let i = 0; i < newBlocks.length; i += 100) {
           await notion.blocks.children.append({ block_id: id, children: newBlocks.slice(i, i + 100) });
+          // 小停顿防止速率限制
           if (i + 100 < newBlocks.length) await sleep(100); 
         }
+
       } else {
+        // 创建
         await notion.pages.create({
           parent: { database_id: databaseId },
           properties: props,
@@ -164,7 +182,9 @@ export default async function handler(req, res) {
       await notion.pages.update({ page_id: id, archived: true });
       return res.status(200).json({ success: true });
     }
+
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }
