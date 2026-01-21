@@ -1,9 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
-// ==========================================
-// 1. 图标库
-// ==========================================
+// 图标库 (保持不变)
 const Icons = {
   Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
   CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
@@ -23,9 +21,6 @@ const Icons = {
   Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
 };
 
-// ==========================================
-// 2. 样式表 & 辅助组件
-// ==========================================
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -344,28 +339,6 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
   );
 };
 
-const NotionView = ({ blocks }) => {
-  if (!blocks || !Array.isArray(blocks)) return <div style={{padding:20, color:'#666'}}>暂无预览内容</div>;
-  return (
-    <div style={{color:'#e1e1e3', fontSize:'15px', lineHeight:'1.8'}}>
-      {blocks.map((b, i) => {
-        const type = b.type; const data = b[type]; const text = data?.rich_text?.[0]?.plain_text || "";
-        if(type==='heading_1') return <h1 key={i} style={{fontSize:'1.8em', borderBottom:'1px solid #333', paddingBottom:'8px', margin:'24px 0 12px'}}>{text}</h1>;
-        if(type==='paragraph') {
-            const richText = data?.rich_text?.[0];
-            if (richText?.annotations?.code) return <div key={i} style={{margin:'10px 0', borderLeft:'3px solid #ff6b6b', paddingLeft:'10px'}}><span style={{color:'#ff6b6b', fontFamily:'monospace', fontSize:'0.95em'}}>{text}</span></div>;
-            return <p key={i} style={{margin:'10px 0', minHeight:'1em'}}>{text}</p>;
-        }
-        if(type==='divider') return <hr key={i} style={{border:'none', borderTop:'1px solid #444', margin:'24px 0'}} />;
-        if(type==='image') { const url = data?.file?.url || data?.external?.url; if (!url) return null; const isVideo = url.match(/\.(mp4|mov|webm|ogg)(\?|$)/i); if(isVideo) return <div key={i} style={{display:'flex', justifyContent:'center', margin:'20px 0'}}><div style={{width:'100%', maxHeight:'500px', borderRadius:'8px', background:'#000', display:'flex', justifyContent:'center'}}><video src={url} controls preload="metadata" style={{maxWidth:'100%', maxHeight:'100%'}} /></div></div>; return <div key={i} style={{display:'flex', justifyContent:'center', margin:'20px 0'}}><div style={{width: '100%', height: '500px', background: '#000', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden'}}><img src={url} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} alt="" /></div></div>; }
-        if(type==='video' || type==='embed') { let url = data?.file?.url || data?.external?.url || data?.url; if(!url) return null; const isY = url.includes('youtube')||url.includes('youtu.be'); if(isY){if(url.includes('watch?v='))url=url.replace('watch?v=','embed/');if(url.includes('youtu.be/'))url=url.replace('youtu.be/','www.youtube.com/embed/');} return <div key={i} style={{display:'flex', justifyContent:'center', margin:'20px 0'}}>{(type==='embed'||isY)?<iframe src={url} style={{width:'100%',maxWidth:'800px',height:'450px',border:'none',borderRadius:'8px',background:'#000'}} allowFullScreen />:<video src={url} controls style={{width:'100%',maxHeight:'500px',borderRadius:'8px',background:'#000'}}/>}</div>; }
-        if(type==='callout') return <div key={i} style={{background:'#2d2d30', padding:'20px', borderRadius:'12px', border:'1px solid #3e3e42', display:'flex', gap:'15px', margin:'20px 0'}}><div style={{fontSize:'1.4em'}}>{b.callout.icon?.emoji || '🔒'}</div><div style={{flex:1}}><div style={{fontWeight:'bold', color:'greenyellow', marginBottom:'4px'}}>{text}</div><div style={{fontSize:'12px', opacity:0.5}}>[ 加密内容已受保护 ]</div></div></div>;
-        return null;
-      })}
-    </div>
-  );
-};
-
 // ==========================================
 // 5. 顶层入口组件
 // ==========================================
@@ -409,26 +382,24 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // 🟢 修复：handleEdit (拒绝静默失败)
   const handleEdit = async (id) => {
     setLoading(true);
     try {
         const r = await fetch(`/api/admin/post?id=${id}`);
-        // 检查 404/500 错误
         if (!r.ok) throw new Error(`API Error: ${r.status}`);
         
         const d = await r.json();
-        
-        // 检查数据完整性
-        if (d.success && d.post) {
+        if (d.success) {
           setForm(d.post);
-          // 容错：如果 content 为空，给个空字符串
+          // ✅ 修复：如果 rawBlocks 不存在，也允许编辑，只是没预览
+          if (d.post.rawBlocks) setPreviewData(d.post);
+          
+          // ✅ 修复：如果 content 为空，传空字符串防止 split 报错
           setEditorBlocks(parseContentToBlocks(d.post.content || ''));
           setCurrentId(id);
           setView('edit');
         } else {
-          // 明确告知用户为什么失败
-          alert(`加载失败: ${d.error || '返回数据格式不正确'}`);
+          alert(`加载失败: ${d.error || '未知错误'}`);
         }
     } catch(e) { 
         alert("网络请求错误: " + e.message); 
@@ -439,27 +410,7 @@ export default function AdminDashboard() {
 
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
-  // 🟢 修复：handlePreview (拒绝静默失败)
-  const handlePreview = async (p) => {
-    setLoading(true);
-    try {
-        const r = await fetch(`/api/admin/post?id=${p.id}`);
-        if (!r.ok) throw new Error(`API Error: ${r.status}`);
-        
-        const d = await r.json();
-        // 只要 success 就尝试显示，不再强校验 rawBlocks
-        if (d.success && d.post) {
-            setPreviewData(d.post);
-        } else {
-            alert('预览数据加载失败: ' + (d.error || '未知错误'));
-        }
-    } catch(e) {
-        alert('预览请求错误: ' + e.message);
-    } finally {
-        setLoading(false);
-    }
-  };
-  
+  // ✅ 修复：handleSave 加入防抖
   const handleSave = async () => {
     if (isDeploying) return alert("请等待上一次更新完成（约60秒）...");
     setLoading(true);
@@ -481,7 +432,7 @@ export default function AdminDashboard() {
         alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
       } else {
         alert("✅ 保存成功！");
-        triggerDeploy();
+        triggerDeploy(); // 触发防抖更新
         setView('list');
         fetchPosts();
       }
