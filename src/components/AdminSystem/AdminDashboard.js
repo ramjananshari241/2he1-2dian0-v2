@@ -321,19 +321,43 @@ export default function AdminDashboard() {
     setLoading(true); 
     try { 
        const r = await fetch('/api/admin/posts');
-       if (!r.ok) throw new Error(`API Error: ${r.status}`);
-       const d = await r.json(); 
-       if (d.success) { setPosts(d.posts || []); setOptions(d.options || { categories: [], tags: [] }); }
        
-       const rConf = await fetch('/api/admin/config');
-       if (rConf.ok) {
-           const dConf = await rConf.json(); 
-           if (dConf.success && dConf.siteInfo) setSiteTitle(dConf.siteInfo.title);
+       // 🛡️ 防崩层 1: 检查 HTTP 状态
+       if (!r.ok) {
+         console.error("API Error Status:", r.status);
+         // 如果 API 挂了，我们不崩页面，只是停止加载
+         setLoading(false);
+         return; 
        }
-    } catch(e) { console.warn(e); } 
+
+       // 🛡️ 防崩层 2: 尝试解析 JSON
+       let d;
+       try {
+         d = await r.json();
+       } catch (jsonErr) {
+         console.error("API 返回的不是 JSON:", jsonErr);
+         return;
+       }
+
+       if (d.success) { 
+         setPosts(d.posts || []); 
+         setOptions(d.options || { categories: [], tags: [] }); 
+       }
+       
+       // 获取 Config (独立错误处理)
+       try {
+         const rConf = await fetch('/api/admin/config');
+         if(rConf.ok) {
+            const dConf = await rConf.json(); 
+            if (dConf.success && dConf.siteInfo) setSiteTitle(dConf.siteInfo.title);
+         }
+       } catch(e) {}
+
+    } catch(e) { 
+       console.warn("Fetch Error:", e);
+    } 
     finally { setLoading(false); } 
   }
-  useEffect(() => { if (mounted) fetchPosts(); }, [mounted]);
 
   // 后退逻辑
   useEffect(() => {
