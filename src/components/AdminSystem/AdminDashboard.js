@@ -18,9 +18,10 @@ const Icons = {
   CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
   TextMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
   GridMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>,
+  Tutorial: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
 };
 
-// ================= 2. 样式 & 辅助组件 =================
+// ================= 2. 全局样式 =================
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -86,6 +87,7 @@ const GlobalStyle = () => (
     .input:active { transform: scale(0.95); }
     .input:focus { box-shadow: 0 0 0 2.5px #2f303d; }
     .search-icon { position: absolute; left: 1rem; fill: #bdbecb; width: 1rem; height: 1rem; pointer-events: none; z-index: 1; }
+    /* 🟢 修复：底部距离改为 120px，避开客服组件 */
     .fab-scroll { position: fixed; right: 30px; bottom: 120px; display: flex; flex-direction: column; gap: 10px; z-index: 99; }
     .fab-btn { width: 45px; height: 45px; background: greenyellow; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
     .fab-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(173, 255, 47, 0.4); }
@@ -97,6 +99,7 @@ const GlobalStyle = () => (
   `}} />
 );
 
+// --- 3. 辅助组件 ---
 const SearchInput = ({ value, onChange }) => (
   <div className="group">
     <svg className="search-icon" aria-hidden="true" viewBox="0 0 24 24"><g><path d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"></path></g></svg>
@@ -164,6 +167,9 @@ const cleanAndFormat = (input) => {
   } catch (e) { return input; }
 };
 
+// ==========================================
+// 4. 积木编辑器 (状态机逻辑 + 视角锁定)
+// ==========================================
 const BlockBuilder = ({ blocks, setBlocks }) => {
   const [movingId, setMovingId] = useState(null);
 
@@ -260,7 +266,6 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
 };
 
 const NotionView = ({ blocks }) => {
-  // ✅ 修复：判空保护，防止预览崩溃
   if (!blocks || !Array.isArray(blocks)) return <div style={{padding:20, color:'#666'}}>暂无预览内容</div>;
   return (
     <div style={{color:'#e1e1e3', fontSize:'15px', lineHeight:'1.8'}}>
@@ -283,7 +288,7 @@ const NotionView = ({ blocks }) => {
 };
 
 // ==========================================
-// 4. 主组件
+// 5. 主页面组件
 // ==========================================
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
@@ -342,7 +347,7 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // 🟢 核心修复：智能解析器 (兼容 Notion > 🔒 格式)
+  // 🟢 核心修复：智能解析器 (兼容 Notion 原生 Markdown)
   const parseContentToBlocks = (md) => {
     if(!md) return [];
     const lines = md.split(/\r?\n/);
@@ -381,22 +386,23 @@ export default function AdminDashboard() {
         continue;
       }
 
-      // 🟢 B. Notion 返回的 Markdown 语法 > 🔒 (正则加强匹配)
-      if (!isLocking && trimmed.match(/^>\s*🔒\s*\*\*LOCK:(.*?)\*\*/)) {
+      // B. Notion 返回的 Markdown 语法 > 🔒 (增强正则)
+      // 匹配 > 🔒 **LOCK:密码** 或 > 🔒 LOCK:密码
+      if (!isLocking && trimmed.match(/^>\s*🔒\s*(\*\*)?LOCK:(.*?)(\*\*)?/)) {
         flushBuffer(); isLocking = true;
-        const match = trimmed.match(/LOCK:(.*?)\*\*/);
+        // 提取密码
+        const match = trimmed.match(/LOCK:(.*?)(\*|$)/);
         lockPwd = match ? match[1].trim() : '';
         continue;
       }
       
-      // 🟢 C. 结束条件：如果还在 Lock 模式，但遇到了非引用的行，强制结束
-      // Notion Markdown 特性：引用块结束通常是空行或无 >
+      // C. 结束条件：非引用行且非空行 -> 结束录制
       if (isLocking && !trimmed.startsWith('>') && !trimmed.startsWith(':::') && trimmed !== '') {
          isLocking = false;
          const joinedLock = lockBuffer.join('\n').trim();
          res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
          lockBuffer = [];
-         i--; // 回退一行，让这一行重新作为普通块处理
+         i--; // 回退一行
          continue;
       }
 
@@ -416,6 +422,7 @@ export default function AdminDashboard() {
       buffer.push(line);
     }
     
+    // 收尾
     if (isLocking) {
         const joinedLock = lockBuffer.join('\n').trim();
         res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
@@ -425,7 +432,7 @@ export default function AdminDashboard() {
     return res;
   };
 
-  const handlePreview = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if(d.success && d.post) setPreviewData(d.post); }).finally(()=>setLoading(false)); };
+  const handlePreview = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if(d.success && d.post && d.post.rawBlocks) setPreviewData(d.post); }).finally(()=>setLoading(false)); };
   const handleEdit = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if (d.success) { setForm(d.post); setEditorBlocks(parseContentToBlocks(d.post.content)); setCurrentId(p.id); setView('edit'); setExpandedStep(1); } }).finally(()=>setLoading(false)); };
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
@@ -455,7 +462,6 @@ export default function AdminDashboard() {
         alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
       } else {
         alert("✅ 保存成功！");
-        // 尝试触发自动更新
         try { await fetch('/api/admin/deploy'); } catch(e) {}
         setView('list');
         fetchPosts();
