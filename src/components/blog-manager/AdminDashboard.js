@@ -1,6 +1,19 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
+// ... (图标库 Icons 和样式 GlobalStyle 保持不变，省略以节省篇幅，请保留你原来的或复制上一个回答的)
+// 为了确保完整性，这里我只列出核心逻辑变更，建议你保留头部的 Icons 和 GlobalStyle
+// ...
+
+// ⬇️ 请保留文件头部的 Icons 和 GlobalStyle 定义，从这里开始覆盖后面的组件逻辑 ⬇️
+
+// ... Icons 定义 ...
+// ... GlobalStyle 定义 ...
+// ... SearchInput / StepAccordion / AnimatedBtn / SlidingNav / FullScreenLoader 定义 ...
+// (如果你需要完整代码，请用上一次回答的完整代码，然后只替换下面的 BlockBuilder 和 AdminDashboard)
+
+// 为了防止你拼接出错，我还是给你提供【完整代码块】，请直接全选覆盖：
+
 // ================= 1. 图标库 =================
 const Icons = {
   Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
@@ -87,7 +100,6 @@ const GlobalStyle = () => (
     .input:active { transform: scale(0.95); }
     .input:focus { box-shadow: 0 0 0 2.5px #2f303d; }
     .search-icon { position: absolute; left: 1rem; fill: #bdbecb; width: 1rem; height: 1rem; pointer-events: none; z-index: 1; }
-    /* 🟢 修复悬浮按钮位置 */
     .fab-scroll { position: fixed; right: 30px; bottom: 120px; display: flex; flex-direction: column; gap: 10px; z-index: 99; }
     .fab-btn { width: 45px; height: 45px; background: greenyellow; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
     .fab-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(173, 255, 47, 0.4); }
@@ -294,10 +306,7 @@ export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('list');
-  
-  // ✅ 核心修复：补全缺失的 viewMode 状态
   const [viewMode, setViewMode] = useState('covered');
-  
   const [posts, setPosts] = useState([]);
   const [options, setOptions] = useState({ categories: [], tags: [] });
   const [activeTab, setActiveTab] = useState('Post');
@@ -350,23 +359,6 @@ export default function AdminDashboard() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
-
-  const updateSiteTitle = async () => {
-    const newTitle = prompt("请输入新的网站标题:", siteTitle);
-    if (newTitle && newTitle !== siteTitle) {
-        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
-        setSiteTitle(newTitle); setLoading(false);
-    }
-  };
-
-  const deleteTagOption = (e, tagToDelete) => {
-    e.stopPropagation();
-    const currentTags = form.tags ? form.tags.split(',').filter(t => t.trim()) : [];
-    const newTags = currentTags.filter(t => t.trim() !== tagToDelete).join(',');
-    setForm({ ...form, tags: newTags });
-  };
-
-  const handleNavClick = (idx) => { setNavIdx(idx); const modes = ['folder','covered','text','gallery']; setViewMode(modes[idx]); setSelectedFolder(null); };
 
   // 🟢 核心修复：智能解析器 (兼容 Notion 原生 Markdown)
   const parseContentToBlocks = (md) => {
@@ -490,6 +482,20 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateSiteTitle = async () => {
+    const newTitle = prompt("请输入新的网站标题:", siteTitle);
+    if (newTitle && newTitle !== siteTitle) {
+        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
+        setSiteTitle(newTitle); setLoading(false);
+    }
+  };
+
+  const triggerDeploy = async () => {
+    setIsDeploying(true);
+    try { await fetch('/api/admin/deploy'); } catch(e) {}
+    setTimeout(() => setIsDeploying(false), 60000);
+  };
+
   const handleManualDeploy = async () => {
      if (isDeploying) return;
      if(confirm('确定要立即更新Blog吗？\n点击确定将立刻开始更新，在完成内容更新前请不要重复提交更新请求！')) {
@@ -497,12 +503,15 @@ export default function AdminDashboard() {
         alert('已触发更新！请耐心等待约 1 分钟。');
      }
   };
-  
-  const triggerDeploy = async () => {
-    setIsDeploying(true);
-    try { await fetch('/api/admin/deploy'); } catch(e) {}
-    setTimeout(() => setIsDeploying(false), 60000);
+
+  const deleteTagOption = (e, tagToDelete) => {
+    e.stopPropagation();
+    const currentTags = form.tags ? form.tags.split(',').filter(t => t.trim()) : [];
+    const newTags = currentTags.filter(t => t.trim() !== tagToDelete).join(',');
+    setForm({ ...form, tags: newTags });
   };
+
+  const handleNavClick = (idx) => { setNavIdx(idx); const modes = ['folder','covered','text','gallery']; setViewMode(modes[idx]); setSelectedFolder(null); };
 
   const getFilteredPosts = () => {
      let list = posts.filter(p => {
@@ -540,6 +549,7 @@ export default function AdminDashboard() {
            </div>
            
            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+             {/* 🟢 更新按钮 (仅图标) */}
              <button onClick={handleManualDeploy} style={{background:'#424242', border: isDeploying ? '1px solid #555' : '1px solid greenyellow', opacity: isDeploying ? 0.5 : 1, padding:'10px', borderRadius:'8px', color: isDeploying ? '#888' : 'greenyellow', cursor: isDeploying ? 'not-allowed' : 'pointer'}} title="立即更新博客前端">
                <Icons.Refresh />
              </button>
