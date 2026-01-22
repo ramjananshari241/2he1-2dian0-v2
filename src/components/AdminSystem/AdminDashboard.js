@@ -1,27 +1,26 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
-// 图标库 (保持不变)
+// ================= 1. 图标库 =================
 const Icons = {
   Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
-  CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
-  TextMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
-  GridMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>,
-  FolderMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>,
-  FolderIcon: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" style={{opacity:0.8}}><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path></svg>,
   Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>,
   Trash: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
-  Tutorial: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
-  ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>,
+  Settings: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
   ArrowUp: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>,
   ArrowDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>,
   Top: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 11 12 5 6 11"></polyline><polyline points="18 18 12 12 6 18"></polyline></svg>,
   Bottom: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 6 12 12 18 6"></polyline><polyline points="6 13 12 19 18 13"></polyline></svg>,
-  Settings: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
-  Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+  Refresh: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>,
+  FolderIcon: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" style={{opacity:0.8}}><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path></svg>,
+  ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>,
+  FolderMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>,
+  CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
+  TextMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
+  GridMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>,
 };
 
-// 样式与辅助组件
+// ================= 2. 样式 & 辅助组件 =================
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -165,98 +164,10 @@ const cleanAndFormat = (input) => {
   } catch (e) { return input; }
 };
 
-// ==========================================
-// 4. 积木编辑器 (状态机解析)
-// ==========================================
-const parseContentToBlocks = (md) => {
-  if(!md) return [];
-  const lines = md.split(/\r?\n/);
-  const res = [];
-  let buffer = []; let isLocking = false; let lockPwd = ''; let lockBuffer = [];  
-  
-  const stripMd = (str) => { const match = str.match(/(?:!|)?\[.*?\]\((.*?)\)/); return match ? match[1] : str; };
-  const flushBuffer = () => {
-    if (buffer.length > 0) {
-      const joined = buffer.map(stripMd).join('\n').trim();
-      if (joined) {
-         if (joined.startsWith('`') && joined.endsWith('`') && joined.length > 1) {
-            res.push({ id: Date.now() + Math.random(), type: 'note', content: joined.slice(1, -1) });
-         } else {
-            res.push({ id: Date.now() + Math.random(), type: 'text', content: joined });
-         }
-      }
-      buffer = [];
-    }
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // A. 识别 :::lock (新建时)
-    if (!isLocking && trimmed.startsWith(':::lock')) {
-      flushBuffer(); isLocking = true;
-      lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
-      continue;
-    }
-    if (isLocking && trimmed === ':::') {
-      isLocking = false;
-      const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
-      res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-      lockBuffer = [];
-      continue;
-    }
-
-    // B. 识别 Notion 原生 > 🔒 (兼容性修复)
-    // 关键修复：这里的正则现在能完美匹配 Notion 返回的引用块格式
-    if (!isLocking && trimmed.match(/^>\s*🔒/)) {
-      flushBuffer(); isLocking = true;
-      const match = trimmed.match(/LOCK:(.*?)\*\*/);
-      lockPwd = match ? match[1].trim() : '';
-      continue;
-    }
-    
-    // 结束条件：只要不处于锁定模式，或者非引用行
-    // 修改：放宽结束条件，只要当前行不以 > 开头且不为空，就结束 lock
-    if (isLocking && !trimmed.startsWith('>') && trimmed !== '') {
-       isLocking = false;
-       const joinedLock = lockBuffer.join('\n').trim();
-       res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-       lockBuffer = [];
-       i--; // 回退，重新处理当前行
-       continue;
-    }
-
-    if (isLocking) {
-      let contentLine = line;
-      // 去除 Notion 引用符号
-      if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
-      else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
-      
-      if (contentLine.trim() === '---') continue;
-      // if (contentLine.trim() === '') continue; // 保留空行，让排版更自然
-
-      lockBuffer.push(contentLine);
-      continue;
-    }
-
-    if (trimmed.startsWith('# ')) { flushBuffer(); res.push({ id: Date.now() + Math.random(), type: 'h1', content: trimmed.replace('# ', '') }); continue; }
-    if (!trimmed) { flushBuffer(); continue; }
-    buffer.push(line);
-  }
-  
-  if (isLocking) {
-      const joinedLock = lockBuffer.join('\n').trim();
-      res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-  } else {
-      flushBuffer();
-  }
-  return res;
-};
-
 const BlockBuilder = ({ blocks, setBlocks }) => {
   const [movingId, setMovingId] = useState(null);
 
+  // 视角锁定
   const scrollToBlock = (id) => {
     setTimeout(() => {
        const el = document.getElementById(`block-${id}`);
@@ -348,30 +259,72 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
   );
 };
 
+const NotionView = ({ blocks }) => {
+  // ✅ 修复：判空保护，防止预览崩溃
+  if (!blocks || !Array.isArray(blocks)) return <div style={{padding:20, color:'#666'}}>暂无预览内容</div>;
+  return (
+    <div style={{color:'#e1e1e3', fontSize:'15px', lineHeight:'1.8'}}>
+      {blocks.map((b, i) => {
+        const type = b.type; const data = b[type]; const text = data?.rich_text?.[0]?.plain_text || "";
+        if(type==='heading_1') return <h1 key={i} style={{fontSize:'1.8em', borderBottom:'1px solid #333', paddingBottom:'8px', margin:'24px 0 12px'}}>{text}</h1>;
+        if(type==='paragraph') {
+            const richText = data?.rich_text?.[0];
+            if (richText?.annotations?.code) return <div key={i} style={{margin:'10px 0', borderLeft:'3px solid #ff6b6b', paddingLeft:'10px'}}><span style={{color:'#ff6b6b', fontFamily:'monospace', fontSize:'0.95em'}}>{text}</span></div>;
+            return <p key={i} style={{margin:'10px 0', minHeight:'1em'}}>{text}</p>;
+        }
+        if(type==='divider') return <hr key={i} style={{border:'none', borderTop:'1px solid #444', margin:'24px 0'}} />;
+        if(type==='image') { const url = data?.file?.url || data?.external?.url; if (!url) return null; const isVideo = url.match(/\.(mp4|mov|webm|ogg)(\?|$)/i); if(isVideo) return <div key={i} style={{display:'flex', justifyContent:'center', margin:'20px 0'}}><div style={{width:'100%', maxHeight:'500px', borderRadius:'8px', background:'#000', display:'flex', justifyContent:'center'}}><video src={url} controls preload="metadata" style={{maxWidth:'100%', maxHeight:'100%'}} /></div></div>; return <div key={i} style={{display:'flex', justifyContent:'center', margin:'20px 0'}}><div style={{width: '100%', height: '500px', background: '#000', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden'}}><img src={url} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} alt="" /></div></div>; }
+        if(type==='video' || type==='embed') { let url = data?.file?.url || data?.external?.url || data?.url; if(!url) return null; const isY = url.includes('youtube')||url.includes('youtu.be'); if(isY){if(url.includes('watch?v='))url=url.replace('watch?v=','embed/');if(url.includes('youtu.be/'))url=url.replace('youtu.be/','www.youtube.com/embed/');} return <div key={i} style={{display:'flex', justifyContent:'center', margin:'20px 0'}}>{(type==='embed'||isY)?<iframe src={url} style={{width:'100%',maxWidth:'800px',height:'450px',border:'none',borderRadius:'8px',background:'#000'}} allowFullScreen />:<video src={url} controls style={{width:'100%',maxHeight:'500px',borderRadius:'8px',background:'#000'}}/>}</div>; }
+        if(type==='callout') return <div key={i} style={{background:'#2d2d30', padding:'20px', borderRadius:'12px', border:'1px solid #3e3e42', display:'flex', gap:'15px', margin:'20px 0'}}><div style={{fontSize:'1.4em'}}>{b.callout.icon?.emoji || '🔒'}</div><div style={{flex:1}}><div style={{fontWeight:'bold', color:'greenyellow', marginBottom:'4px'}}>{text}</div><div style={{fontSize:'12px', opacity:0.5}}>[ 加密内容已受保护 ]</div></div></div>;
+        return null;
+      })}
+    </div>
+  );
+};
+
 // ==========================================
-// 5. 顶层入口组件
+// 4. 主组件
 // ==========================================
 export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
-  const [view, setView] = useState('list'), [viewMode, setViewMode] = useState('covered'), [posts, setPosts] = useState([]), [options, setOptions] = useState({ categories: [], tags: [] }), [loading, setLoading] = useState(false), [activeTab, setActiveTab] = useState('Post'), [searchQuery, setSearchQuery] = useState(''), [showAllTags, setShowAllTags] = useState(false), [selectedFolder, setSelectedFolder] = useState(null), [previewData, setPreviewData] = useState(null);
-  const [form, setForm] = useState({ title: '', slug: '', excerpt: '', content: '', category: '', tags: '', cover: '', status: 'Published', type: 'Post', date: '' }), [currentId, setCurrentId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState('list');
+  const [posts, setPosts] = useState([]);
+  const [options, setOptions] = useState({ categories: [], tags: [] });
+  const [activeTab, setActiveTab] = useState('Post');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  
+  // 编辑器状态
+  const [form, setForm] = useState({ title: '', slug: '', excerpt: '', content: '', category: '', tags: '', cover: '', status: 'Published', type: 'Post', date: '' });
+  const [currentId, setCurrentId] = useState(null);
   const [siteTitle, setSiteTitle] = useState('PROBLOG');
   const [navIdx, setNavIdx] = useState(1); 
   const [expandedStep, setExpandedStep] = useState(1);
   const [editorBlocks, setEditorBlocks] = useState([]);
+  
+  // 🟢 防抖状态锁
   const [isDeploying, setIsDeploying] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
   const isFormValid = form.title.trim() !== '' && form.category.trim() !== '' && form.date !== '';
 
+  // 🛡️ 防崩检查: Fetch
   async function fetchPosts() {
     setLoading(true); 
     try { 
-       const r = await fetch('/api/admin/posts'); 
-       if(!r.ok) throw new Error(`API Error: ${r.status}`);
+       const r = await fetch('/api/admin/posts');
+       if (!r.ok) throw new Error(`API Error: ${r.status}`);
        const d = await r.json(); 
        if (d.success) { setPosts(d.posts || []); setOptions(d.options || { categories: [], tags: [] }); }
-       const rConf = await fetch('/api/admin/config'); const dConf = await rConf.json(); if (dConf.success) setSiteTitle(dConf.siteInfo.title);
+       
+       const rConf = await fetch('/api/admin/config');
+       if (rConf.ok) {
+           const dConf = await rConf.json(); 
+           if (dConf.success && dConf.siteInfo) setSiteTitle(dConf.siteInfo.title);
+       }
     } catch(e) { console.warn(e); } 
     finally { setLoading(false); } 
   }
@@ -382,57 +335,102 @@ export default function AdminDashboard() {
     if (view === 'edit') {
       window.history.pushState({ view: 'edit' }, '', '?mode=edit');
     } else {
-      if (window.location.search.includes('mode=edit')) {
-         window.history.back();
-      }
+      if (window.location.search.includes('mode=edit')) window.history.back();
     }
     const onPopState = () => { if (view === 'edit') setView('list'); };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // ✅ handleEdit (防崩版)
-  const handleEdit = async (id) => {
-    setLoading(true);
-    try {
-        const r = await fetch(`/api/admin/post?id=${id}`);
-        if (!r.ok) throw new Error(`API Error: ${r.status}`);
-        
-        const d = await r.json();
-        if (d.success && d.post) {
-          setForm(d.post);
-          setEditorBlocks(parseContentToBlocks(d.post.content || ''));
-          setCurrentId(id);
-          setView('edit');
-        } else {
-          alert(`加载失败: ${d.error || '未知错误'}`);
+  // 🟢 核心修复：智能解析器 (兼容 Notion > 🔒 格式)
+  const parseContentToBlocks = (md) => {
+    if(!md) return [];
+    const lines = md.split(/\r?\n/);
+    const res = [];
+    let buffer = []; let isLocking = false; let lockPwd = ''; let lockBuffer = [];  
+    const stripMd = (str) => { const match = str.match(/(?:!|)?\[.*?\]\((.*?)\)/); return match ? match[1] : str; };
+    const flushBuffer = () => {
+      if (buffer.length > 0) {
+        const joined = buffer.map(stripMd).join('\n').trim();
+        if (joined) {
+           if (joined.startsWith('`') && joined.endsWith('`') && joined.length > 1) {
+              res.push({ id: Date.now() + Math.random(), type: 'note', content: joined.slice(1, -1) });
+           } else {
+              res.push({ id: Date.now() + Math.random(), type: 'text', content: joined });
+           }
         }
-    } catch(e) { 
-        alert("网络请求错误: " + e.message); 
-    } finally { 
-        setLoading(false); 
+        buffer = [];
+      }
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // A. 新建时的语法 :::lock
+      if (!isLocking && trimmed.startsWith(':::lock')) {
+        flushBuffer(); isLocking = true;
+        lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
+        continue;
+      }
+      if (isLocking && trimmed === ':::') {
+        isLocking = false;
+        const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
+        res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+        lockBuffer = [];
+        continue;
+      }
+
+      // 🟢 B. Notion 返回的 Markdown 语法 > 🔒 (正则加强匹配)
+      if (!isLocking && trimmed.match(/^>\s*🔒\s*\*\*LOCK:(.*?)\*\*/)) {
+        flushBuffer(); isLocking = true;
+        const match = trimmed.match(/LOCK:(.*?)\*\*/);
+        lockPwd = match ? match[1].trim() : '';
+        continue;
+      }
+      
+      // 🟢 C. 结束条件：如果还在 Lock 模式，但遇到了非引用的行，强制结束
+      // Notion Markdown 特性：引用块结束通常是空行或无 >
+      if (isLocking && !trimmed.startsWith('>') && !trimmed.startsWith(':::') && trimmed !== '') {
+         isLocking = false;
+         const joinedLock = lockBuffer.join('\n').trim();
+         res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+         lockBuffer = [];
+         i--; // 回退一行，让这一行重新作为普通块处理
+         continue;
+      }
+
+      if (isLocking) {
+        let contentLine = line;
+        // 清洗 Notion 引用前缀
+        if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
+        else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
+        if (contentLine.trim() === '---') continue;
+        if (contentLine.trim() === '') continue;
+        lockBuffer.push(contentLine);
+        continue;
+      }
+
+      if (trimmed.startsWith('# ')) { flushBuffer(); res.push({ id: Date.now() + Math.random(), type: 'h1', content: trimmed.replace('# ', '') }); continue; }
+      if (!trimmed) { flushBuffer(); continue; }
+      buffer.push(line);
     }
+    
+    if (isLocking) {
+        const joinedLock = lockBuffer.join('\n').trim();
+        res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+    } else {
+        flushBuffer();
+    }
+    return res;
   };
 
-  // ✅ handlePreview (防崩版 + 冒泡修复)
-  const handlePreview = async (p) => {
-    setLoading(true);
-    try {
-        const r = await fetch(`/api/admin/post?id=${p.id}`);
-        if (!r.ok) throw new Error(`API Error: ${r.status}`);
-        const d = await r.json();
-        if (d.success && d.post) {
-            setPreviewData(d.post);
-        } else {
-            alert('预览失败: ' + (d.error || '无数据'));
-        }
-    } catch(e) { } finally { setLoading(false); }
-  };
-  
+  const handlePreview = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if(d.success && d.post) setPreviewData(d.post); }).finally(()=>setLoading(false)); };
+  const handleEdit = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if (d.success) { setForm(d.post); setEditorBlocks(parseContentToBlocks(d.post.content)); setCurrentId(p.id); setView('edit'); setExpandedStep(1); } }).finally(()=>setLoading(false)); };
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
   const handleSave = async () => {
-    if (isDeploying) return alert("请等待上一次更新完成（约60秒）...");
+    if (isDeploying) return alert("请等待更新完成...");
     setLoading(true);
     const fullContent = editorBlocks.map(b => {
       if (b.type === 'h1') return `# ${b.content}`;
@@ -444,7 +442,12 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/post', {
         method: 'POST',
-        body: JSON.stringify({ ...form, content: fullContent, id: currentId, type: form.type || 'Post' })
+        body: JSON.stringify({ 
+          ...form, 
+          content: fullContent, 
+          id: currentId,
+          type: form.type || 'Post' 
+        })
       });
       const d = await res.json();
       
@@ -452,7 +455,8 @@ export default function AdminDashboard() {
         alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
       } else {
         alert("✅ 保存成功！");
-        triggerDeploy();
+        // 尝试触发自动更新
+        try { await fetch('/api/admin/deploy'); } catch(e) {}
         setView('list');
         fetchPosts();
       }
@@ -460,6 +464,14 @@ export default function AdminDashboard() {
       alert('网络错误: ' + e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateSiteTitle = async () => {
+    const newTitle = prompt("请输入新的网站标题:", siteTitle);
+    if (newTitle && newTitle !== siteTitle) {
+        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
+        setSiteTitle(newTitle); setLoading(false);
     }
   };
 
@@ -475,14 +487,6 @@ export default function AdminDashboard() {
         await triggerDeploy();
         alert('已触发更新！请耐心等待约 1 分钟。');
      }
-  };
-
-  const updateSiteTitle = async () => {
-    const newTitle = prompt("请输入新的网站标题:", siteTitle);
-    if (newTitle && newTitle !== siteTitle) {
-        setLoading(true); await fetch('/api/admin/config', { method: 'POST', body: JSON.stringify({ title: newTitle }) });
-        setSiteTitle(newTitle); setLoading(false);
-    }
   };
 
   const deleteTagOption = (e, tagToDelete) => {
@@ -513,25 +517,28 @@ export default function AdminDashboard() {
   const displayTags = (options.tags && options.tags.length > 0) ? (showAllTags ? options.tags : options.tags.slice(0, 12)) : [];
 
   if (!mounted) return null;
-  const getStatusStyle = (status) => { const isDraft = status === 'Draft'; return { borderColor: isDraft ? '#f97316' : 'transparent', color: isDraft ? '#f97316' : 'greenyellow', label: isDraft ? '📝 草稿' : '🚀 已发布' }; };
 
   return (
     <div style={{ minHeight: '100vh', background: '#303030', padding: '40px 20px' }}>
       <GlobalStyle />
       {loading && <FullScreenLoader />}
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
              {view === 'list' && <SearchInput value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />}
              <div style={{display:'flex', flexDirection:'column', justifyContent:'center'}}>
-                <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '1px', display:'flex', alignItems:'center', gap:'10px' }}>{siteTitle} <span onClick={updateSiteTitle} style={{cursor:'pointer', opacity:0.5}} title="修改网站标题"><Icons.Settings /></span></div>
+                <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '1px', display:'flex', alignItems:'center', gap:'10px' }}>
+                   {siteTitle} <span onClick={updateSiteTitle} style={{cursor:'pointer', opacity:0.5}} title="修改网站标题"><Icons.Settings /></span>
+                </div>
              </div>
            </div>
            
            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+             {/* 🟢 修复：更新按钮只显示图标 */}
              <button onClick={handleManualDeploy} style={{background:'#424242', border: isDeploying ? '1px solid #555' : '1px solid greenyellow', opacity: isDeploying ? 0.5 : 1, padding:'10px', borderRadius:'8px', color: isDeploying ? '#888' : 'greenyellow', cursor: isDeploying ? 'not-allowed' : 'pointer'}} title="立即更新博客前端">
-               {isDeploying ? '更新中...' : <><Icons.Refresh /></>}
+               <Icons.Refresh />
              </button>
+
              <button onClick={() => window.open('https://pan.cloudreve.org/xxx', '_blank')} style={{background:'#a855f7', border:'none', padding:'10px 20px', borderRadius:'8px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px', fontWeight:'bold', fontSize:'14px'}} className="btn-ia"><Icons.Tutorial /> 教程</button>
              {view === 'list' ? <AnimatedBtn text="发布新内容" onClick={handleCreate} /> : <AnimatedBtn text="返回列表" onClick={() => setView('list')} />}
            </div>
@@ -547,13 +554,13 @@ export default function AdminDashboard() {
             <div style={viewMode === 'gallery' || viewMode === 'folder' ? {display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'15px'} : {}}>
               {viewMode === 'folder' && options.categories.map(cat => <div key={cat} onClick={()=>{setSelectedFolder(cat); handleNavClick(1);}} style={{padding:'15px', background:'#424242', borderRadius:'10px', display:'flex', alignItems:'center', gap:'12px', border:'1px solid #555', cursor:'pointer'}} className="btn-ia"><Icons.FolderIcon />{cat}</div>)}
               {viewMode !== 'folder' && filtered.map(p => {
-                const st = getStatusStyle(p.status);
+                const st = (p.status === 'Draft') ? { borderColor: '#f97316', color: '#f97316', label: '📝 草稿' } : { borderColor: 'transparent', color: 'greenyellow', label: '🚀 已发布' };
                 return (
-                  <div key={p.id} onClick={(e) => { e.stopPropagation(); handlePreview(p); }} className="card-item" style={{...(viewMode === 'text' ? {display:'flex', alignItems:'center', padding:'16px 20px'} : viewMode === 'gallery' ? {display:'flex', flexDirection:'column', height:'auto'} : {}), background:'#424242', borderRadius:'12px', marginBottom:'8px', border: `1px solid ${st.borderColor}`}}>
+                  <div key={p.id} onClick={() => handlePreview(p)} className="card-item" style={{...(viewMode === 'text' ? {display:'flex', alignItems:'center', padding:'16px 20px'} : viewMode === 'gallery' ? {display:'flex', flexDirection:'column', height:'auto'} : {}), background:'#424242', borderRadius:'12px', marginBottom:'8px', border: `1px solid ${st.borderColor}`}}>
                     {viewMode === 'covered' && <><div style={{width:'160px', flexShrink:0, background:'#303030', display:'flex', alignItems:'center', justifyContent:'center'}}>{p.cover ? <img src={p.cover} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{fontSize:'28px', color:'#444'}}>{activeTab[0]}</div>}</div><div style={{padding:'20px 35px', flex:1}}><div style={{fontWeight:'bold', fontSize:'20px', color:'#fff', marginBottom:'8px'}}>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8, display:'flex', alignItems:'center', gap:'10px'}}><span style={{border:`1px solid ${st.color}`, color:st.color, padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'}}>{st.label}</span>{p.category} · {p.date}</div></div></>}
                     {viewMode === 'text' && <div style={{flex:1, display:'flex', alignItems:'center'}}><div style={{flex:1, fontSize:'14px', display:'flex', alignItems:'center', gap:'10px'}}><span style={{width:'6px', height:'6px', borderRadius:'50%', background:st.color}}></span>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8}}>{p.category} · {p.date}</div></div>}
                     {viewMode === 'gallery' && <><div style={{height:'140px', background:'#303030', display:'flex', alignItems:'center', justifyContent:'center', position:'relative'}}><div style={{position:'absolute', top:'10px', right:'10px', background:st.color, color:'#000', padding:'2px 6px', borderRadius:'4px', fontSize:'10px', fontWeight:'bold'}}>{p.status === 'Draft' ? 'DRAFT' : 'PUB'}</div>{p.cover ? <img src={p.cover} style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <div style={{fontSize:'40px', color:'#444'}}>{activeTab[0]}</div>}</div><div style={{padding:'15px'}}><div style={{fontSize:'14px', fontWeight:'bold', color:'#fff'}}>{p.title}</div><div style={{color:'#fff', fontSize:'12px', opacity:0.8}}>{p.category} · {p.date}</div></div></>}
-                    <div className="drawer"><div onClick={(e) => { e.stopPropagation(); handleEdit(p.id); }} style={{background:'greenyellow', color:'#000'}} className="dr-btn"><Icons.Edit /></div><div onClick={(e) => { e.stopPropagation(); if(confirm('彻底删除？')){setLoading(true); fetch('/api/admin/post?id='+p.id,{method:'DELETE'}).then(()=>fetchPosts())}}} style={{background:'#ff4d4f'}} className="dr-btn"><Icons.Trash /></div></div>
+                    <div className="drawer"><div onClick={(e) => { e.stopPropagation(); handleEdit(p); }} style={{background:'greenyellow', color:'#000'}} className="dr-btn"><Icons.Edit /></div><div onClick={(e) => { e.stopPropagation(); if(confirm('彻底删除？')){setLoading(true); fetch('/api/admin/post?id='+p.id,{method:'DELETE'}).then(()=>fetchPosts())}}} style={{background:'#ff4d4f'}} className="dr-btn"><Icons.Trash /></div></div>
                   </div>
                 );
               })}
