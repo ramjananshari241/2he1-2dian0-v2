@@ -21,7 +21,7 @@ const Icons = {
   Tutorial: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
 };
 
-// ================= 2. 样式 & 辅助组件 =================
+// ================= 2. 全局样式 =================
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -87,7 +87,7 @@ const GlobalStyle = () => (
     .input:active { transform: scale(0.95); }
     .input:focus { box-shadow: 0 0 0 2.5px #2f303d; }
     .search-icon { position: absolute; left: 1rem; fill: #bdbecb; width: 1rem; height: 1rem; pointer-events: none; z-index: 1; }
-    /* 🟢 修复悬浮按钮位置：底部距离改为 150px */
+    /* 🟢 修复：底部距离改为 150px，避开客服组件 */
     .fab-scroll { position: fixed; right: 30px; bottom: 150px; display: flex; flex-direction: column; gap: 10px; z-index: 99; }
     .fab-btn { width: 45px; height: 45px; background: greenyellow; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; transition: 0.2s; }
     .fab-btn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(173, 255, 47, 0.4); }
@@ -347,12 +347,16 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // 🟢 核心修复：智能解析器 (兼容 Notion 原生 Markdown)
+  // 🟢 核心修复：智能解析器 (双模状态机)
   const parseContentToBlocks = (md) => {
     if(!md) return [];
     const lines = md.split(/\r?\n/);
     const res = [];
     let buffer = []; let isLocking = false; let lockPwd = ''; let lockBuffer = [];  
+    
+    // 新增：模式锁 ('explicit' = :::lock, 'implicit' = > 🔒)
+    let lockMode = null; 
+
     const stripMd = (str) => { const match = str.match(/(?:!|)?\[.*?\]\((.*?)\)/); return match ? match[1] : str; };
     const flushBuffer = () => {
       if (buffer.length > 0) {
@@ -372,55 +376,62 @@ export default function AdminDashboard() {
       const line = lines[i];
       const trimmed = line.trim();
 
-      // A. 新建时的语法 :::lock
+      // A. 显式模式 :::lock
       if (!isLocking && trimmed.startsWith(':::lock')) {
-        flushBuffer(); isLocking = true;
+        flushBuffer(); isLocking = true; lockMode = 'explicit';
         lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
         continue;
       }
-      if (isLocking && trimmed === ':::') {
-        isLocking = false;
-        const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
-        res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-        lockBuffer = [];
-        continue;
-      }
-
-      // B. Notion 返回的 Markdown 语法 > 🔒 (增强正则)
+      // B. 隐式模式 > 🔒 (Notion返回)
       if (!isLocking && trimmed.match(/^>\s*🔒\s*(\*\*)?LOCK:(.*?)(\*\*)?/)) {
-        flushBuffer(); isLocking = true;
+        flushBuffer(); isLocking = true; lockMode = 'implicit';
         const match = trimmed.match(/LOCK:(.*?)(\*|$)/);
         lockPwd = match ? match[1].trim() : '';
         continue;
       }
       
-      // C. 结束条件
-      if (isLocking && !trimmed.startsWith('>') && !trimmed.startsWith(':::') && trimmed !== '') {
-         isLocking = false;
-         const joinedLock = lockBuffer.join('\n').trim();
-         res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
-         lockBuffer = [];
-         i--; // 回退一行
-         continue;
-      }
-
+      // 结束条件
       if (isLocking) {
+        // 显式结束
+        if (lockMode === 'explicit' && trimmed === ':::') {
+           isLocking = false;
+           const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
+           res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+           lockBuffer = [];
+           continue;
+        }
+        // 隐式结束：非引用行且非空
+        if (lockMode === 'implicit' && !trimmed.startsWith('>') && trimmed !== '') {
+           isLocking = false;
+           const joinedLock = lockBuffer.join('\n').trim();
+           res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
+           lockBuffer = [];
+           i--; // 回退一行
+           continue;
+        }
+
+        // 收集内容
         let contentLine = line;
-        if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
-        else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
+        if (lockMode === 'implicit') {
+            // 去除引用前缀
+            if (contentLine.startsWith('> ')) contentLine = contentLine.substring(2);
+            else if (contentLine.startsWith('>')) contentLine = contentLine.substring(1);
+        }
         if (contentLine.trim() === '---') continue;
         if (contentLine.trim() === '') continue;
         lockBuffer.push(contentLine);
         continue;
       }
 
+      // 普通块
       if (trimmed.startsWith('# ')) { flushBuffer(); res.push({ id: Date.now() + Math.random(), type: 'h1', content: trimmed.replace('# ', '') }); continue; }
       if (!trimmed) { flushBuffer(); continue; }
       buffer.push(line);
     }
     
+    // 收尾
     if (isLocking) {
-        const joinedLock = lockBuffer.join('\n').trim();
+        const joinedLock = lockMode === 'implicit' ? lockBuffer.join('\n').trim() : lockBuffer.map(stripMd).join('\n').trim();
         res.push({ id: Date.now() + Math.random(), type: 'lock', pwd: lockPwd, content: joinedLock });
     } else {
         flushBuffer();
@@ -458,8 +469,6 @@ export default function AdminDashboard() {
         alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
       } else {
         alert("✅ 保存成功！");
-        // 🟢 修复：取消自动触发，改为手动点击更新按钮
-        // try { await fetch('/api/admin/deploy'); } catch(e) {}
         setView('list');
         fetchPosts();
       }
@@ -537,11 +546,9 @@ export default function AdminDashboard() {
            </div>
            
            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-             {/* 🟢 更新按钮：只保留图标 */}
              <button onClick={handleManualDeploy} style={{background:'#424242', border: isDeploying ? '1px solid #555' : '1px solid greenyellow', opacity: isDeploying ? 0.5 : 1, padding:'10px', borderRadius:'8px', color: isDeploying ? '#888' : 'greenyellow', cursor: isDeploying ? 'not-allowed' : 'pointer'}} title="立即更新博客前端">
                <Icons.Refresh />
              </button>
-
              <button onClick={() => window.open('https://pan.cloudreve.org/xxx', '_blank')} style={{background:'#a855f7', border:'none', padding:'10px 20px', borderRadius:'8px', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px', fontWeight:'bold', fontSize:'14px'}} className="btn-ia"><Icons.Tutorial /> 教程</button>
              {view === 'list' ? <AnimatedBtn text="发布新内容" onClick={handleCreate} /> : <AnimatedBtn text="返回列表" onClick={() => setView('list')} />}
            </div>
