@@ -4,10 +4,10 @@ export default function Document() {
   return (
     <Html lang="zh-CN">
       <Head>
-        {/* 🟢 全局图标设置：这里设置后，所有页面都会有图标 */}
+        {/* 注意：这里的 href="/favicon.ico" 会自动去找根目录 public 文件夹里的 favicon.ico */}
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/favicon.ico" />
-        <meta name="theme-color" content="#303030" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
       </Head>
       <body>
         <Main />
