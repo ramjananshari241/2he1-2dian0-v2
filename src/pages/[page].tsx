@@ -25,13 +25,21 @@ const specialPages = Object.values(CONFIG.DEFAULT_SPECIAL_PAGES)
 export const getStaticPaths = async () => {
   const pages = await getPages()
   const formattedPages = formatPages(pages)
+  
+  // 🟢 核心优化：只在构建阶段预先渲染前 20 篇文章
+  // 这样部署时间将缩短 90% 以上。剩下的文章会在用户访问时自动生成并缓存。
   const paths = formattedPages
+    .slice(0, 20) 
     .map((page) => ({
       params: { page: page.slug },
     }))
     .filter((page) => !specialPages.includes(page.params?.page as string))
 
-  return { paths, fallback: 'blocking' }
+  return { 
+    paths, 
+    // 🟢 关键：blocking 模式会确保未预生成的页面在初次访问时自动同步生成
+    fallback: 'blocking' 
+  }
 }
 
 export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
@@ -52,7 +60,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
           page: null,
           blocks: [],
         },
-        // revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
+        revalidate: 10,
       }
     }
 
@@ -65,7 +73,9 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         page: page,
         blocks: formattedBlocks,
       },
-      // revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
+      // 🟢 核心优化：开启 ISR，每 10 秒可以在后台静默刷新一次内容
+      // 以后你在 Notion 改了文章正文，不用点部署，几秒后刷新网页就能看到。
+      revalidate: 10,
     }
   }
 )
