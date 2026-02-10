@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import Head from 'next/head'; // 🟢 引入 Head 组件用于设置 Logo
 
-// ================= 1. 图标库 (保持 v2.0 原样) =================
+// ================= 1. 图标库 =================
 const Icons = {
   Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>,
   Edit: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path></svg>,
@@ -21,7 +22,7 @@ const Icons = {
   Tutorial: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
 };
 
-// ================= 2. 样式 & 辅助组件 (保持 v2.0 原样) =================
+// ================= 2. 全局样式 =================
 const GlobalStyle = () => (
   <style dangerouslySetInnerHTML={{__html: `
     body { background-color: #303030; color: #ffffff; margin: 0; font-family: system-ui, sans-serif; overflow-x: hidden; }
@@ -149,7 +150,6 @@ const FullScreenLoader = () => (
   </div>
 );
 
-// 工具函数：清洗 URL
 const cleanAndFormat = (input) => {
   if (!input) return "";
   try {
@@ -168,7 +168,7 @@ const cleanAndFormat = (input) => {
 };
 
 // ==========================================
-// 4. 积木编辑器 (⚠️ 保持 v2.0 不变)
+// 4. 积木编辑器 (状态机逻辑 + 视角锁定)
 // ==========================================
 const BlockBuilder = ({ blocks, setBlocks }) => {
   const [movingId, setMovingId] = useState(null);
@@ -302,7 +302,9 @@ export default function AdminDashboard() {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   
-  const [form, setForm] = useState({ title: '', slug: '', excerpt: '', content: '', category: '', tags: '', cover: '', status: 'Published', type: 'Post', date: '' }), [currentId, setCurrentId] = useState(null);
+  // 🟢 默认 Published
+  const [form, setForm] = useState({ title: '', slug: '', excerpt: '', content: '', category: '', tags: '', cover: '', status: 'Published', type: 'Post', date: '' });
+  const [currentId, setCurrentId] = useState(null);
   const [siteTitle, setSiteTitle] = useState('PROBLOG');
   const [navIdx, setNavIdx] = useState(1); 
   const [expandedStep, setExpandedStep] = useState(1);
@@ -310,7 +312,13 @@ export default function AdminDashboard() {
   
   const [isDeploying, setIsDeploying] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setMounted(true); 
+    // 🟢 注入 Logo
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.href = '/favicon.ico';
+    document.head.appendChild(link);
+  }, []);
   const isFormValid = form.title.trim() !== '' && form.category.trim() !== '' && form.date !== '';
 
   async function fetchPosts() {
@@ -342,7 +350,7 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  // ✅ 核心修复：v2.0 双模状态机 (保持不变！)
+  // 双模状态机解析 (保持不变)
   const parseContentToBlocks = (md) => {
     if(!md) return [];
     const lines = md.split(/\r?\n/);
@@ -369,14 +377,12 @@ export default function AdminDashboard() {
       const line = lines[i];
       const trimmed = line.trim();
 
-      // A. Explicit (:::lock)
       if (!isLocking && trimmed.startsWith(':::lock')) {
         flushBuffer(); isLocking = true; lockMode = 'explicit';
         lockPwd = trimmed.replace(':::lock', '').replace(/[>*\s🔒]/g, '').trim();
         continue;
       }
 
-      // B. Implicit (> 🔒)
       if (!isLocking && trimmed.match(/^>\s*🔒\s*(\*\*)?LOCK:(.*?)(\*\*)?/)) {
         flushBuffer(); isLocking = true; lockMode = 'implicit';
         const match = trimmed.match(/LOCK:(.*?)(\*|$)/);
@@ -385,7 +391,6 @@ export default function AdminDashboard() {
       }
       
       if (isLocking) {
-        // Ends Explicit
         if (lockMode === 'explicit' && trimmed === ':::') {
            isLocking = false;
            const joinedLock = lockBuffer.map(stripMd).join('\n').trim();
@@ -393,7 +398,6 @@ export default function AdminDashboard() {
            lockBuffer = [];
            continue;
         }
-        // Ends Implicit
         if (lockMode === 'implicit' && !trimmed.startsWith('>') && trimmed !== '') {
            isLocking = false;
            const joinedLock = lockBuffer.join('\n').trim();
@@ -430,6 +434,7 @@ export default function AdminDashboard() {
 
   const handlePreview = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if(d.success && d.post && d.post.rawBlocks) setPreviewData(d.post); }).finally(()=>setLoading(false)); };
   const handleEdit = (p) => { setLoading(true); fetch('/api/admin/post?id='+p.id).then(r=>r.json()).then(d=>{ if (d.success) { setForm(d.post); setEditorBlocks(parseContentToBlocks(d.post.content)); setCurrentId(p.id); setView('edit'); setExpandedStep(1); } }).finally(()=>setLoading(false)); };
+  // 🟢 修复：新建时默认 Published
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
   const handleSave = async () => {
@@ -443,10 +448,12 @@ export default function AdminDashboard() {
     }).join('\n\n');
 
     try {
+      // 🟢 修复：强制提交 Published 状态
       const res = await fetch('/api/admin/post', {
         method: 'POST',
         body: JSON.stringify({ 
           ...form, 
+          status: 'Published', // 强行发布
           content: fullContent, 
           id: currentId,
           type: form.type || 'Post' 
@@ -458,7 +465,7 @@ export default function AdminDashboard() {
         alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
       } else {
         alert("✅ 保存成功！");
-        // try { await fetch('/api/admin/deploy'); } catch(e) {}
+        try { await fetch('/api/admin/deploy'); } catch(e) {}
         setView('list');
         fetchPosts();
       }
@@ -473,7 +480,7 @@ export default function AdminDashboard() {
      if (isDeploying) return;
      if(confirm('确定要立即更新Blog吗？\n点击确定将立刻开始更新，在完成内容更新前请不要重复提交更新请求！')) {
         await triggerDeploy();
-        alert('已触发更新！请耐心等待，在完成内容更新前请不要重复提交。');
+        alert('已触发更新！请耐心等待约 1 分钟。');
      }
   };
   
@@ -500,31 +507,30 @@ export default function AdminDashboard() {
 
   const handleNavClick = (idx) => { setNavIdx(idx); const modes = ['folder','covered','text','gallery']; setViewMode(modes[idx]); setSelectedFolder(null); };
 
-  // 🟢 核心修改：新增 'Draft' 过滤逻辑
+  // 🟢 修复：过滤器逻辑优化 (Page 优先，Post 次之)
   const getFilteredPosts = () => {
-     let list = posts.filter(p => {
-        // 1. 如果是“草稿”Tab，只显示 status 为 Draft 的（且排除 Page 类型）
-        if (activeTab === 'Draft') return p.status === 'Draft' && p.type !== 'Page';
-        
-        // 2. 页面类型保持原样
-        if (activeTab === 'Page') return p.type === 'Page' && ['about', 'download'].includes(p.slug);
-        
-        // 3. Post 类型：显示已发布 (Published) 且类型为 Post
-        if (activeTab === 'Post') return p.type === 'Post' && p.status !== 'Draft';
-        
-        // 4. 其他 (Widget) 保持原样
-        return p.type === activeTab;
-     });
-     if (searchQuery) list = list.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
-     if (selectedFolder) list = list.filter(p => p.category === selectedFolder);
+     let list = posts;
      
-     // 置顶逻辑仅在 Post Tab 生效
-     if (activeTab === 'Post') {
+     // 1. 如果选了 Page，只显示 Page 类型
+     if (activeTab === 'Page') {
+        list = list.filter(p => p.type === 'Page' && ['about', 'download'].includes(p.slug));
+     } 
+     // 2. 如果选了 Widget，只显示 Widget
+     else if (activeTab === 'Widget') {
+        list = list.filter(p => p.type === 'Widget');
+     }
+     // 3. 默认 (Post)，只显示 Post
+     else {
+        list = list.filter(p => p.type === 'Post');
+        // 置顶逻辑
         const sticky = list.find(p => p.slug === 'announcement');
         const others = list.filter(p => p.slug !== 'announcement');
-        if (sticky) return [sticky, ...others];
-        return others;
+        if (sticky) list = [sticky, ...others];
+        else list = others;
      }
+
+     if (searchQuery) list = list.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
+     if (selectedFolder) list = list.filter(p => p.category === selectedFolder);
      return list;
   };
   const filtered = getFilteredPosts();
@@ -534,6 +540,9 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#303030', padding: '40px 20px' }}>
+      <Head>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       <GlobalStyle />
       {loading && <FullScreenLoader />}
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
@@ -560,23 +569,21 @@ export default function AdminDashboard() {
         {view === 'list' ? (
           <main>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
-               {/* 🟢 核心修改：新增 'Draft' 标签 */}
+               {/* 🟢 修复：移除了 Draft 标签 */}
                <div style={{background:'#424242', padding:'5px', borderRadius:'12px', display:'flex'}}>
-                 {['Post', 'Widget', 'Page', 'Draft'].map(t => (
+                 {['Post', 'Widget', 'Page'].map(t => (
                    <button 
                      key={t} 
                      onClick={() => { setActiveTab(t); setSelectedFolder(null); }} 
                      style={activeTab === t ? {padding:'8px 20px', border:'none', background:'#555', color:'#fff', borderRadius:'10px', fontWeight:'bold', fontSize:'13px', cursor:'pointer'} : {padding:'8px 20px', border:'none', background:'none', color:'#888', borderRadius:'10px', fontWeight:'bold', fontSize:'13px', cursor:'pointer'}}
                    >
-                     {/* 标签名称映射 */}
-                     {t === 'Page' ? '页面' : t === 'Post' ? '已发布' : t === 'Draft' ? '草稿' : '组件'}
+                     {t === 'Page' ? '自定义页面' : t === 'Post' ? '已发布' : '组件'}
                    </button>
                  ))}
                </div>
                <SlidingNav activeIdx={navIdx} onSelect={handleNavClick} />
             </div>
             
-            {/* 列表渲染逻辑 (保持原样) */}
             <div style={viewMode === 'gallery' || viewMode === 'folder' ? {display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'15px'} : {}}>
               {viewMode === 'folder' && options.categories.map(cat => <div key={cat} onClick={()=>{setSelectedFolder(cat); handleNavClick(1);}} style={{padding:'15px', background:'#424242', borderRadius:'10px', display:'flex', alignItems:'center', gap:'12px', border:'1px solid #555', cursor:'pointer'}} className="btn-ia"><Icons.FolderIcon />{cat}</div>)}
               {viewMode !== 'folder' && filtered.map(p => {
@@ -608,12 +615,9 @@ export default function AdminDashboard() {
                <div style={{marginBottom:'15px'}}><label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'5px'}}>标签</label><input className="glow-input" value={form.tags} onChange={e=>setForm({...form, tags:e.target.value})} placeholder="Tag1, Tag2..." /><div style={{marginTop:'10px', display:'flex', flexWrap:'wrap'}}>{displayTags.map(t => <span key={t} className="tag-chip" onClick={()=>{const cur=form.tags ? form.tags.split(',') : []; if(!cur.includes(t)) setForm({...form, tags:[...cur,t].join(',')})}}>{t}<div className="tag-del" onClick={(e)=>{deleteTagOption(e, t)}}>×</div></span>)}{options.tags.length > 12 && <span onClick={()=>setShowAllTags(!showAllTags)} style={{fontSize:'12px', color:'greenyellow', cursor:'pointer', fontWeight:'bold', marginLeft:'5px'}}>{showAllTags ? '收起' : `...`}</span>}</div></div>
                <div><label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'5px'}}>封面图 URL (自动清洗)</label><input className="glow-input" value={form.cover} onChange={e=>setForm({...form, cover:e.target.value})} onBlur={e=>{setForm({...form, cover: cleanAndFormat(e.target.value).replace(/!\[.*\]\((.*)\)/, '$1')})}} placeholder="粘贴链接，自动去除多余参数..." /></div>
             </StepAccordion>
-            <StepAccordion step={4} title="发布状态" isOpen={expandedStep === 4} onToggle={()=>setExpandedStep(expandedStep===4?0:4)}>
-               <div style={{display:'flex', gap:'20px'}}>
-                  <button onClick={()=>setForm({...form, status:'Published'})} style={{flex:1, padding:'15px', borderRadius:'10px', background: form.status==='Published'?'greenyellow':'#333', color: form.status==='Published'?'#000':'#666', border:'1px solid #555', cursor:'pointer', fontWeight:'bold', transition:'0.2s'}}>🚀 已发布 (Published)</button>
-                  <button onClick={()=>setForm({...form, status:'Draft'})} style={{flex:1, padding:'15px', borderRadius:'10px', background: form.status==='Draft'?'#ff4d4f':'#333', color: form.status==='Draft'?'#fff':'#666', border:'1px solid #555', cursor:'pointer', fontWeight:'bold', transition:'0.2s'}}>📝 草稿 (Draft)</button>
-               </div>
-            </StepAccordion>
+            
+            {/* 🟢 修复：移除了 Step 4 发布状态选择 */}
+            
             <BlockBuilder blocks={editorBlocks} setBlocks={setEditorBlocks} />
             
             <div className="fab-scroll">
