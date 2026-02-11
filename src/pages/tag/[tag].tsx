@@ -55,7 +55,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         tag,
         subTitle,
       },
-      // revalidate: 60,
+      revalidate: 10,
     }
   }
 )

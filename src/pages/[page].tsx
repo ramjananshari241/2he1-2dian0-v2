@@ -75,7 +75,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
       },
       // 🟢 核心优化：开启 ISR，每 10 秒可以在后台静默刷新一次内容
       // 以后你在 Notion 改了文章正文，不用点部署，几秒后刷新网页就能看到。
-      revalidate: 10,
+      revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
 )

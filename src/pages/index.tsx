@@ -70,7 +70,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
       },
       // 🟢 核心优化：首页开启自动更新
       // 每 10 秒检查一次 Notion，如有新文章会自动刷出
-      revalidate: 10,
+      revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
 )

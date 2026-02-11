@@ -86,7 +86,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         title: safeTitle,
         widgets: formattedWidgets || {}, // 确保 widgets 本身不为空对象
       },
-      // revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
+      revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
 )
