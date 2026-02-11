@@ -20,6 +20,7 @@ export function withNavFooterStaticProps(
       },
     }
 
+    // 如果页面没有额外的数据抓取逻辑
     if (!getStaticPropsFunc) {
       return {
         ...sharedProps,
@@ -27,10 +28,10 @@ export function withNavFooterStaticProps(
       }
     }
 
+    // 执行具体页面的逻辑
     const result = await getStaticPropsFunc(context, sharedProps)
 
-    // 🟢 核心修复：强制在最终返回对象中注入 revalidate 信号
-    // 如果没有这一行，Vercel 永远收不到“定期更新”的指令
+    // 🟢 核心修复：强制确保信号穿透给 Vercel
     return {
       ...result,
       revalidate: result.revalidate || CONFIG.NEXT_REVALIDATE_SECONDS,
