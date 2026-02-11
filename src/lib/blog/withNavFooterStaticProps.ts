@@ -1,14 +1,14 @@
-import CONFIG from '@/blog.config'
-import { GetStaticPropsContext } from 'next'
 import { getCachedNavFooter } from '../notion/getCachedMem'
 
+// 🟢 彻底转为实时模式包装器
 export function withNavFooterStaticProps(
-  getStaticPropsFunc?: (
-    context: GetStaticPropsContext,
+  getPropsFunc?: (
+    context: any,
     sharedPageStaticProps: any
   ) => Promise<any>
 ) {
-  return async (context: GetStaticPropsContext): Promise<any> => {
+  return async (context: any): Promise<any> => {
+    // 每次用户访问，这里都会重新运行
     const sharedData = await getCachedNavFooter()
 
     const sharedProps = {
@@ -18,19 +18,18 @@ export function withNavFooterStaticProps(
       },
     }
 
-    if (!getStaticPropsFunc) {
-      return {
-        ...sharedProps,
-        revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
-      }
+    if (!getPropsFunc) {
+      return sharedProps
     }
 
-    const result = await getStaticPropsFunc(context, sharedProps)
+    const result = await getPropsFunc(context, sharedProps)
 
-    // 🟢 关键：强制透传 revalidate，否则 Vercel 收不到更新指令
     return {
       ...result,
-      revalidate: result.revalidate || CONFIG.NEXT_REVALIDATE_SECONDS,
+      props: {
+        ...sharedProps.props,
+        ...(result.props || {}),
+      },
     }
   }
 }

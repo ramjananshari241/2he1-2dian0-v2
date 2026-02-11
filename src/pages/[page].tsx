@@ -1,5 +1,4 @@
-import CONFIG from '@/blog.config'
-import { GetStaticProps, GetStaticPropsContext, NextPage } from 'next'
+import { NextPage } from 'next'
 import { BlockRender } from '../components/blocks/BlockRender'
 import { LargeTitle } from '../components/LargeTitle'
 import ContainerLayout from '../components/post/ContainerLayout'
@@ -7,10 +6,9 @@ import withNavFooter from '../components/withNavFooter'
 import { formatBlocks } from '../lib/blog/format/block'
 import { withNavFooterStaticProps } from '../lib/blog/withNavFooterStaticProps'
 import { getAllBlocks } from '../lib/notion/getBlocks'
-import { getPageBySlug, getPosts } from '../lib/notion/getBlogData'
-import { ApiScope } from '../types/notion'
+import { getPageBySlug } from '../lib/notion/getBlogData'
 
-const Post: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) => {
+const PostPage: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) => {
   return (
     <ContainerLayout>
       <LargeTitle className="mb-8" title={title} />
@@ -21,15 +19,17 @@ const Post: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) => {
   )
 }
 
-export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
-  async (context: GetStaticPropsContext) => {
-    const slug = context.params?.page as string
+// 🟢 核心改动：使用 getServerSideProps 实现 100% 实时抓取
+export const getServerSideProps = withNavFooterStaticProps(
+  async (context: any) => {
+    const slug = context.params?.page as string // 这里的 page 对应网址里的 slug
     const page = await getPageBySlug(slug)
 
     if (!page) {
       return { notFound: true }
     }
 
+    // 现场抓取 Notion 里的最新块
     const blocks = await getAllBlocks(page.id)
     const formattedBlocks = await formatBlocks(blocks)
 
@@ -38,25 +38,11 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         blocks: formattedBlocks,
         title: (page.properties.title as any).title[0].plain_text,
       },
-      // 🟢 开启实时抓取开关
-      revalidate: 1,
     }
   }
 )
 
-export async function getStaticPaths() {
-  const posts = await getPosts(ApiScope.Archive)
-  const paths = posts.map((post: any) => ({
-    params: { page: post.properties.slug.rich_text[0].plain_text },
-  }))
+// 🟢 彻底删掉原来的 getStaticPaths，SSR 模式不需要它
 
-  return {
-    paths,
-    // 🟢 核心提速与实时发现：改为 'blocking'
-    fallback: 'blocking', 
-  }
-}
-
-// ✅ 修正点：正确包裹并导出组件
-const withNavPage = withNavFooter(Post)
+const withNavPage = withNavFooter(PostPage)
 export default withNavPage

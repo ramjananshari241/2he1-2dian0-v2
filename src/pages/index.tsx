@@ -1,5 +1,5 @@
 import CONFIG from '@/blog.config'
-import { GetStaticProps, GetStaticPropsContext, NextPage } from 'next'
+import { NextPage } from 'next'
 import ContainerLayout from '../components/post/ContainerLayout'
 import { WidgetCollection } from '../components/section/WidgetCollection'
 import withNavFooter from '../components/withNavFooter'
@@ -28,8 +28,9 @@ const Home: NextPage<{ posts: Post[], widgets: any }> = ({ posts, widgets }) => 
   )
 }
 
-export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
-  async (_context: GetStaticPropsContext, sharedPageStaticProps: any) => {
+// 🟢 核心改动：使用 getServerSideProps 实现首页实时更新
+export const getServerSideProps = withNavFooterStaticProps(
+  async (_context: any, sharedPageStaticProps: any) => {
     const { LARGE, MEDIUM, SMALL, MORE } = CONFIG.HOME_POSTS_COUNT
     const sum = LARGE + MEDIUM + SMALL + MORE + 5
 
@@ -44,7 +45,6 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
     const preFormattedWidgets = await preFormatWidgets(rawWidgets)
     const formattedWidgets = await formatWidgets(preFormattedWidgets, blogStats)
 
-    // 🛡️ 防崩补丁
     const safeWidgets = formattedWidgets as any
     if (safeWidgets?.profile) {
       if (safeWidgets.profile.links === undefined) safeWidgets.profile.links = null
@@ -57,8 +57,6 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         posts: filteredPosts.slice(0, sum - 5),
         widgets: safeWidgets,
       },
-      // 🟢 触发开关
-      revalidate: 1,
     }
   }
 )
