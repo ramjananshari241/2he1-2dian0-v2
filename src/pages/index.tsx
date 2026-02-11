@@ -30,21 +30,25 @@ const Home: NextPage<{ posts: Post[], widgets: any }> = ({ posts, widgets }) => 
 
 export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
   async (_context, sharedPageStaticProps: any) => {
+    console.log('--- [ISR 触发] 正在生成首页内容 ---')
     const { LARGE, MEDIUM, SMALL, MORE } = CONFIG.HOME_POSTS_COUNT
     const sum = LARGE + MEDIUM + SMALL + MORE + 5
+
+    // 抓取文章数据
     const postsRaw = await getLimitPosts(sum, ApiScope.Home)
     const allFormattedPosts = await formatPosts(postsRaw)
 
+    // 公告栏拦截
     const announcementPost = allFormattedPosts.find(p => p.slug === 'announcement') || null
     const filteredPosts = allFormattedPosts.filter(p => p.slug !== 'announcement')
 
+    // 获取侧边栏组件
     const blogStats = await getBlogStats()
     const rawWidgets = await getWidgets()
     const preFormattedWidgets = await preFormatWidgets(rawWidgets)
-    
-    // 🛡️ 核心修复：通过 as any 解决 blogStats 类型不匹配导致的红字报错
     const formattedWidgets = await formatWidgets(preFormattedWidgets, blogStats as any)
 
+    // 防崩补丁
     const safeWidgets = formattedWidgets as any
     if (safeWidgets?.profile) {
       if (safeWidgets.profile.links === undefined) safeWidgets.profile.links = null
@@ -57,6 +61,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         posts: filteredPosts.slice(0, sum - 5),
         widgets: safeWidgets,
       },
+      // 🟢 核心配置：1秒更新一次。Vercel 在检测到 Notion 变动后会自动刷新缓存
       revalidate: 1, 
     }
   }

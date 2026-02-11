@@ -4,12 +4,10 @@ import { formatPages } from '../blog/format/page'
 import { getPages } from './getBlogData'
 import { getDatabaseIcon, getDatabaseTitle } from './getDatabase'
 
-// 🟢 彻底移除全局 Map 缓存变量，依靠 Vercel 自身的 ISR 缓存
-export async function getCachedNavFooter(): Promise<{
-  navPages: Page[]
-  siteTitle: Title
-  logo: DatabaseObjectResponse['icon']
-}> {
+// 🟢 彻底废除 Map 缓存。不管内存里有没有，每次都强行去 Notion 抓取。
+export async function getCachedNavFooter(): Promise<any> {
+  console.log('--- [ISR 触发] 正在实时抓取 Notion 导航数据 ---')
+  
   const pages = await getPages()
   const formattedPages = formatPages(pages)
   const databaseTitle = await getDatabaseTitle()

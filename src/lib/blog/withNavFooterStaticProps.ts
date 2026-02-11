@@ -9,7 +9,7 @@ export function withNavFooterStaticProps(
   ) => Promise<any>
 ) {
   return async (context: GetStaticPropsContext): Promise<any> => {
-    // 每次更新时重新获取基础数据
+    // 每次更新请求时，这里都会重新执行一次
     const sharedData = await getCachedNavFooter()
 
     const sharedProps = {
@@ -22,19 +22,20 @@ export function withNavFooterStaticProps(
     if (!getStaticPropsFunc) {
       return {
         ...sharedProps,
-        revalidate: 1, // 🟢 强制设为 1 秒，实现最高频率更新
+        revalidate: 1, // 🟢 1秒刷新
       }
     }
 
     const result = await getStaticPropsFunc(context, sharedProps)
 
+    // 🟢 核心：强制透传 revalidate。
+    // 如果 result 里面没写，我们也强制给它加上 1 秒的开关。
     return {
       ...result,
       props: {
         ...sharedProps.props,
         ...(result.props || {}),
       },
-      // 🟢 核心修复：确保 revalidate 信号能被 Vercel 捕获
       revalidate: 1, 
     }
   }

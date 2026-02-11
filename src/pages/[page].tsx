@@ -1,3 +1,4 @@
+import CONFIG from '@/blog.config'
 import { GetStaticProps, NextPage } from 'next'
 import { BlockRender } from '../components/blocks/BlockRender'
 import { LargeTitle } from '../components/LargeTitle'
@@ -20,13 +21,16 @@ const PostPage: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) =
   )
 }
 
-// 🟢 改回 getStaticProps，稳定性提升
 export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
   async (context) => {
     const slug = context.params?.page as string
+    console.log(`--- [ISR 触发] 正在生成文章详情页: ${slug} ---`)
+    
     const page = await getPageBySlug(slug)
 
-    if (!page) return { notFound: true }
+    if (!page) {
+      return { notFound: true }
+    }
 
     const blocks = await getAllBlocks(page.id)
     const formattedBlocks = await formatBlocks(blocks)
@@ -36,7 +40,8 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         blocks: formattedBlocks,
         title: (page.properties.title as any).title[0].plain_text,
       },
-      revalidate: 1, // 🟢 1秒刷新一次
+      // 🟢 核心配置：1秒更新一次
+      revalidate: 1, 
     }
   }
 )
@@ -49,6 +54,8 @@ export async function getStaticPaths() {
 
   return {
     paths,
+    // 🟢 核心提速方案：设为 'blocking'。
+    // 部署时不再爬取几百篇文章，提升构建速度；新文章在访问时自动生成并更新缓存。
     fallback: 'blocking', 
   }
 }
