@@ -2,7 +2,7 @@ import { ApiScope } from '@/src/types/notion'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 import { getAll } from './getDatabase'
 
-// 🟢 确保这里没有任何全局变量（如 let allPosts）
+// 🟢 确保没有任何全局变量缓存，让 Vercel 每次 ISR 都重新请求 Notion
 
 export const getPageBySlug = async (slug: string) => {
   const pages = await getPages()
@@ -20,17 +20,38 @@ export const getPages = async () => {
   return objects.filter(
     (object) =>
       object.properties['type']?.type === 'select' &&
-      object.properties['type']?.select?.name === 'Page'
+      object.properties['type'].select?.name === 'Page'
   )
 }
 
-export const getPosts = async (scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft) => {
+export const getPosts = async (
+  scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft
+) => {
   const objects = await getAll(scope)
   return objects.filter(
     (object) =>
       object.properties['type']?.type === 'select' &&
-      object.properties['type']?.select?.name === 'Post'
+      object.properties['type'].select?.name === 'Post'
   )
+}
+
+// 🟢 补全此函数：修复部署时的 TypeError 和 Missing Export 错误
+export const getPostsAndPieces = async (
+  scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft
+) => {
+  const objects = await getAll(scope)
+  return {
+    posts: objects.filter(
+      (object) =>
+        object.properties['type']?.type === 'select' &&
+        object.properties['type'].select?.name === 'Post'
+    ),
+    pieces: objects.filter(
+      (object) =>
+        object.properties['type']?.type === 'select' &&
+        object.properties['type'].select?.name === 'Piece'
+    ),
+  }
 }
 
 export const getWidgets = async () => {
@@ -38,6 +59,6 @@ export const getWidgets = async () => {
   return objects.filter(
     (object) =>
       object.properties['type']?.type === 'select' &&
-      object.properties['type']?.select?.name === 'Widget'
+      object.properties['type'].select?.name === 'Widget'
   )
 }
