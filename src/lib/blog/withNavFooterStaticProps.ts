@@ -1,15 +1,15 @@
-import CONFIG from '@/blog.config'
-import { GetStaticPropsContext } from 'next'
 import { getCachedNavFooter } from '../notion/getCachedMem'
 
+// 🟢 彻底转为 SSR 模式包装器
+// 删除了所有与 revalidate 相关的逻辑，因为它现在是 100% 实时
 export function withNavFooterStaticProps(
-  getStaticPropsFunc?: (
-    context: GetStaticPropsContext,
+  getPropsFunc?: (
+    context: any,
     sharedPageStaticProps: any
   ) => Promise<any>
 ) {
-  return async (context: GetStaticPropsContext): Promise<any> => {
-    // 每次更新请求时，这里都会重新执行一次
+  return async (context: any): Promise<any> => {
+    // 每次用户打开网页，这里都会重新运行
     const sharedData = await getCachedNavFooter()
 
     const sharedProps = {
@@ -19,24 +19,18 @@ export function withNavFooterStaticProps(
       },
     }
 
-    if (!getStaticPropsFunc) {
-      return {
-        ...sharedProps,
-        revalidate: 1, // 🟢 1秒刷新
-      }
+    if (!getPropsFunc) {
+      return sharedProps
     }
 
-    const result = await getStaticPropsFunc(context, sharedProps)
+    const result = await getPropsFunc(context, sharedProps)
 
-    // 🟢 核心：强制透传 revalidate。
-    // 如果 result 里面没写，我们也强制给它加上 1 秒的开关。
     return {
       ...result,
       props: {
         ...sharedProps.props,
         ...(result.props || {}),
       },
-      revalidate: 1, 
     }
   }
 }
