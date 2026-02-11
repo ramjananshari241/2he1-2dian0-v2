@@ -9,18 +9,12 @@ import getBlogStats from '../lib/blog/getBlogStats'
 import { withNavFooterStaticProps } from '../lib/blog/withNavFooterStaticProps'
 import { getWidgets } from '../lib/notion/getBlogData'
 import { getLimitPosts } from '../lib/notion/getDatabase'
-
 import { MainPostsCollection } from '../components/section/MainPostsCollection'
 import { MorePostsCollection } from '../components/section/MorePostsCollection'
-import { Post, SharedNavFooterStaticProps } from '../types/blog'
+import { Post } from '../types/blog'
 import { ApiScope } from '../types/notion'
 
-const Home: NextPage<{
-  posts: Post[]
-  widgets: {
-    [key: string]: any
-  }
-}> = ({ posts, widgets }) => {
+const Home: NextPage<{ posts: Post[], widgets: any }> = ({ posts, widgets }) => {
   return (
     <>
       <ContainerLayout>
@@ -35,10 +29,7 @@ const Home: NextPage<{
 }
 
 export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
-  async (
-    _context: GetStaticPropsContext,
-    sharedPageStaticProps: SharedNavFooterStaticProps
-  ) => {
+  async (_context: GetStaticPropsContext, sharedPageStaticProps: any) => {
     const { LARGE, MEDIUM, SMALL, MORE } = CONFIG.HOME_POSTS_COUNT
     const sum = LARGE + MEDIUM + SMALL + MORE + 5
 
@@ -53,22 +44,20 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
     const preFormattedWidgets = await preFormatWidgets(rawWidgets)
     const formattedWidgets = await formatWidgets(preFormattedWidgets, blogStats)
 
-    // 🛡️ 核心修复：用 any 类型避开 TS 报错
+    // 🛡️ 防崩补丁
     const safeWidgets = formattedWidgets as any
-    if (safeWidgets && safeWidgets.profile) {
-        if (safeWidgets.profile.links === undefined) {
-            safeWidgets.profile.links = null
-        }
+    if (safeWidgets?.profile) {
+      if (safeWidgets.profile.links === undefined) safeWidgets.profile.links = null
     }
     safeWidgets.announcement = announcementPost
 
     return {
       props: {
         ...sharedPageStaticProps.props,
-        posts: filteredPosts.slice(0, sum - 5), 
+        posts: filteredPosts.slice(0, sum - 5),
         widgets: safeWidgets,
       },
-      // 🟢 开启信号
+      // 🟢 触发开关
       revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }

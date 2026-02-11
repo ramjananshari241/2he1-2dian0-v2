@@ -10,10 +10,7 @@ import { getAllBlocks } from '../lib/notion/getBlocks'
 import { getPageBySlug, getPosts } from '../lib/notion/getBlogData'
 import { ApiScope } from '../types/notion'
 
-const Post: NextPage<{
-  blocks: any
-  title: string
-}> = ({ blocks, title }) => {
+const Post: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) => {
   return (
     <ContainerLayout>
       <LargeTitle className="mb-8" title={title} />
@@ -41,7 +38,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         blocks: formattedBlocks,
         title: (page.properties.title as any).title[0].plain_text,
       },
-      // 🟢 开启实时抓取
+      // 🟢 开启实时抓取开关
       revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
@@ -55,10 +52,11 @@ export async function getStaticPaths() {
 
   return {
     paths,
-    // 🟢 核心修复：改为 'blocking'。
-    // 这样新发布的文章，Vercel 会在有人访问时自动去抓取，而不需要重部署！
+    // 🟢 核心提速与实时发现：改为 'blocking'
     fallback: 'blocking', 
   }
 }
 
-export default withNavFooter(Post)
+// ✅ 修正点：正确包裹并导出组件
+const withNavPage = withNavFooter(Post)
+export default withNavPage

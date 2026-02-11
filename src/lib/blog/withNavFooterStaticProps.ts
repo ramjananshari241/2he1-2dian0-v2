@@ -18,16 +18,19 @@ export function withNavFooterStaticProps(
         siteSubtitle: null,
         logo,
       },
-      revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
 
     if (!getStaticPropsFunc) {
-      return sharedProps
+      return {
+        ...sharedProps,
+        revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
+      }
     }
 
     const result = await getStaticPropsFunc(context, sharedProps)
 
-    // 🟢 强制透传 revalidate。如果页面没写，就用 config 里的默认值（10秒）
+    // 🟢 核心修复：强制在最终返回对象中注入 revalidate 信号
+    // 如果没有这一行，Vercel 永远收不到“定期更新”的指令
     return {
       ...result,
       revalidate: result.revalidate || CONFIG.NEXT_REVALIDATE_SECONDS,
