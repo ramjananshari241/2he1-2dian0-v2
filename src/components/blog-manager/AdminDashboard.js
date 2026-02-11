@@ -436,9 +436,10 @@ export default function AdminDashboard() {
   // 🟢 修复：新建时默认 Published
   const handleCreate = () => { setForm({ title: '', slug: 'p-'+Date.now().toString(36), excerpt:'', content:'', category:'', tags:'', cover:'', status:'Published', type: 'Post', date: new Date().toISOString().split('T')[0] }); setEditorBlocks([]); setCurrentId(null); setView('edit'); setExpandedStep(1); };
   
-  const handleSave = async () => {
+const handleSave = async () => {
     if (isDeploying) return alert("请等待更新完成...");
     setLoading(true);
+    
     const fullContent = editorBlocks.map(b => {
       if (b.type === 'h1') return `# ${b.content}`;
       if (b.type === 'note') return `\`${b.content}\``;
@@ -447,25 +448,24 @@ export default function AdminDashboard() {
     }).join('\n\n');
 
     try {
+      // 1. 保存到 Notion
       const res = await fetch('/api/admin/post', {
         method: 'POST',
-        body: JSON.stringify({ 
-          ...form, 
-          // 🟢 修复：强制提交 Published 状态
-          status: 'Published', 
-          content: fullContent, 
-          id: currentId,
-          type: form.type || 'Post' 
-        })
+        body: JSON.stringify({ ...form, content: fullContent, id: currentId, type: form.type || 'Post' })
       });
       const d = await res.json();
       
-      if (!d.success) {
-        alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
-      } else {
-        alert("✅ 保存成功！");
+      if (d.success) {
+        // 🟢 2. 【核心新增】保存成功后，立刻请求引爆接口，强制更新前台
+        // 我们带上 secret 以验证权限
+        const secret = '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'; // 这里建议直接写死你的 Token
+        await fetch(`/api/revalidate?secret=${secret}&slug=${form.slug}`);
+        
+        alert("✅ 保存成功，前台已同步更新！");
         setView('list');
         fetchPosts();
+      } else {
+        alert(`❌ 保存失败！\n\n错误信息:\n${d.error}`);
       }
     } catch (e) {
       alert('网络错误: ' + e.message);
