@@ -1,111 +1,64 @@
 import CONFIG from '@/blog.config'
 import { GetStaticProps, GetStaticPropsContext, NextPage } from 'next'
 import { BlockRender } from '../components/blocks/BlockRender'
-import { Empty } from '../components/Empty'
 import { LargeTitle } from '../components/LargeTitle'
-import { BlogLayoutPure } from '../components/layout/BlogLayout'
 import ContainerLayout from '../components/post/ContainerLayout'
-import { Section404 } from '../components/section/Section404'
 import withNavFooter from '../components/withNavFooter'
 import { formatBlocks } from '../lib/blog/format/block'
-import { formatPages } from '../lib/blog/format/page'
 import { withNavFooterStaticProps } from '../lib/blog/withNavFooterStaticProps'
 import { getAllBlocks } from '../lib/notion/getBlocks'
-import { getPages } from '../lib/notion/getBlogData'
-import { addSubTitle } from '../lib/util'
-import {
-  NextPageWithLayout,
-  Page,
-  SharedNavFooterStaticProps,
-} from '../types/blog'
-import { BlockResponse } from '../types/notion'
+import { getPageBySlug, getPosts } from '../lib/notion/getBlogData'
+import { ApiScope } from '../types/notion'
 
-const specialPages = Object.values(CONFIG.DEFAULT_SPECIAL_PAGES)
-
-export const getStaticPaths = async () => {
-  const pages = await getPages()
-  const formattedPages = formatPages(pages)
-  
-  // 🟢 核心优化：只在构建阶段预先渲染前 20 篇文章
-  // 这样部署时间将缩短 90% 以上。剩下的文章会在用户访问时自动生成并缓存。
-  const paths = formattedPages
-    .slice(0, 20) 
-    .map((page) => ({
-      params: { page: page.slug },
-    }))
-    .filter((page) => !specialPages.includes(page.params?.page as string))
-
-  return { 
-    paths, 
-    // 🟢 关键：blocking 模式会确保未预生成的页面在初次访问时自动同步生成
-    fallback: 'blocking' 
-  }
+const Post: NextPage<{
+  blocks: any
+  title: string
+}> = ({ blocks, title }) => {
+  return (
+    <ContainerLayout>
+      <LargeTitle className="mb-8" title={title} />
+      <div className="break-words rounded-2xl bg-white px-8 py-4 dark:bg-neutral-900">
+        <BlockRender blocks={blocks} />
+      </div>
+    </ContainerLayout>
+  )
 }
 
 export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
-  async (
-    context: GetStaticPropsContext,
-    sharedPageStaticProps: SharedNavFooterStaticProps
-  ) => {
+  async (context: GetStaticPropsContext) => {
     const slug = context.params?.page as string
-    addSubTitle(sharedPageStaticProps.props, slug)
-    const page =
-      sharedPageStaticProps.props.navPages.find((page) => page.slug === slug) ??
-      null
+    const page = await getPageBySlug(slug)
 
     if (!page) {
-      return {
-        props: {
-          ...sharedPageStaticProps.props,
-          page: null,
-          blocks: [],
-        },
-        revalidate: 10,
-      }
+      return { notFound: true }
     }
 
-    const blocks = await getAllBlocks(page?.id ?? '')
+    const blocks = await getAllBlocks(page.id)
     const formattedBlocks = await formatBlocks(blocks)
 
     return {
       props: {
-        ...sharedPageStaticProps.props,
-        page: page,
         blocks: formattedBlocks,
+        title: (page.properties.title as any).title[0].plain_text,
       },
-      // 🟢 核心优化：开启 ISR，每 10 秒可以在后台静默刷新一次内容
-      // 以后你在 Notion 改了文章正文，不用点部署，几秒后刷新网页就能看到。
+      // 🟢 开启实时抓取
       revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
 )
 
-const Page: NextPage<{
-  page: Page
-  blocks: BlockResponse[]
-}> = ({ page, blocks }) => {
-  if (!page) return <Section404 />
+export async function getStaticPaths() {
+  const posts = await getPosts(ApiScope.Archive)
+  const paths = posts.map((post: any) => ({
+    params: { page: post.properties.slug.rich_text[0].plain_text },
+  }))
 
-  const { title } = page
-
-  return (
-    <>
-      <ContainerLayout>
-        <LargeTitle className="mb-4" title={title} />
-        {blocks.length > 0 ? (
-          <div className="px-8 py-4 break-words bg-white rounded-2xl dark:bg-neutral-900">
-            <BlockRender blocks={blocks} />
-          </div>
-        ) : (
-          <Empty />
-        )}
-      </ContainerLayout>
-    </>
-  )
+  return {
+    paths,
+    // 🟢 核心修复：改为 'blocking'。
+    // 这样新发布的文章，Vercel 会在有人访问时自动去抓取，而不需要重部署！
+    fallback: 'blocking', 
+  }
 }
 
-;(Page as NextPageWithLayout).getLayout = (page) => {
-  return <BlogLayoutPure>{page}</BlogLayoutPure>
-}
-
-export default withNavFooter(Page)
+export default withNavFooter(Post)

@@ -53,28 +53,26 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
     const preFormattedWidgets = await preFormatWidgets(rawWidgets)
     const formattedWidgets = await formatWidgets(preFormattedWidgets, blogStats)
 
-    // 🛡️ 保持 2.0 版本的防崩保护
-    if (formattedWidgets && formattedWidgets.profile) {
-        if (formattedWidgets.profile.links === undefined) {
-            formattedWidgets.profile.links = null;
+    // 🛡️ 核心修复：用 any 类型避开 TS 报错
+    const safeWidgets = formattedWidgets as any
+    if (safeWidgets && safeWidgets.profile) {
+        if (safeWidgets.profile.links === undefined) {
+            safeWidgets.profile.links = null
         }
     }
-
-    ;(formattedWidgets as any).announcement = announcementPost
+    safeWidgets.announcement = announcementPost
 
     return {
       props: {
         ...sharedPageStaticProps.props,
         posts: filteredPosts.slice(0, sum - 5), 
-        widgets: formattedWidgets || {},
+        widgets: safeWidgets,
       },
-      // 🟢 核心优化：首页开启自动更新
-      // 每 10 秒检查一次 Notion，如有新文章会自动刷出
+      // 🟢 开启信号
       revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
 )
 
 const withNavPage = withNavFooter(Home, undefined, true)
-
 export default withNavPage
