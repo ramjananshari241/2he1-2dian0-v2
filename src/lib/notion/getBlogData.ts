@@ -2,17 +2,15 @@ import { ApiScope } from '@/src/types/notion'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 import { getAll } from './getDatabase'
 
-// 🟢 确保没有任何全局变量缓存，让 Vercel 每次 ISR 都重新请求 Notion
-
+// 🟢 物理移除所有变量缓存，强制函数执行时直接去查数据库
 export const getPageBySlug = async (slug: string) => {
-  const pages = await getPages()
-  return (
-    pages.find(
-      (page) =>
-        page.properties['slug']?.type === 'rich_text' &&
-        page.properties['slug']?.rich_text[0]?.plain_text === slug
-    ) ?? (null as unknown as PageObjectResponse)
+  const objects = await getAll(ApiScope.Page)
+  const page = objects.find(
+    (object) =>
+      object.properties['slug']?.type === 'rich_text' &&
+      object.properties['slug']?.rich_text[0]?.plain_text === slug
   )
+  return page as PageObjectResponse
 }
 
 export const getPages = async () => {
@@ -24,9 +22,7 @@ export const getPages = async () => {
   )
 }
 
-export const getPosts = async (
-  scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft
-) => {
+export const getPosts = async (scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft) => {
   const objects = await getAll(scope)
   return objects.filter(
     (object) =>
@@ -35,22 +31,11 @@ export const getPosts = async (
   )
 }
 
-// 🟢 补全此函数：修复部署时的 TypeError 和 Missing Export 错误
-export const getPostsAndPieces = async (
-  scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft
-) => {
+export const getPostsAndPieces = async (scope: ApiScope.Home | ApiScope.Archive | ApiScope.Draft) => {
   const objects = await getAll(scope)
   return {
-    posts: objects.filter(
-      (object) =>
-        object.properties['type']?.type === 'select' &&
-        object.properties['type'].select?.name === 'Post'
-    ),
-    pieces: objects.filter(
-      (object) =>
-        object.properties['type']?.type === 'select' &&
-        object.properties['type'].select?.name === 'Piece'
-    ),
+    posts: objects.filter(item => item.properties['type']?.type === 'select' && item.properties['type'].select?.name === 'Post'),
+    pieces: objects.filter(item => item.properties['type']?.type === 'select' && item.properties['type'].select?.name === 'Piece')
   }
 }
 

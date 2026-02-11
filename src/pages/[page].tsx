@@ -1,4 +1,4 @@
-import { NextPage } from 'next'
+import { GetStaticProps, NextPage } from 'next'
 import { BlockRender } from '../components/blocks/BlockRender'
 import { LargeTitle } from '../components/LargeTitle'
 import ContainerLayout from '../components/post/ContainerLayout'
@@ -6,7 +6,8 @@ import withNavFooter from '../components/withNavFooter'
 import { formatBlocks } from '../lib/blog/format/block'
 import { withNavFooterStaticProps } from '../lib/blog/withNavFooterStaticProps'
 import { getAllBlocks } from '../lib/notion/getBlocks'
-import { getPageBySlug } from '../lib/notion/getBlogData'
+import { getPageBySlug, getPosts } from '../lib/notion/getBlogData'
+import { ApiScope } from '../types/notion'
 
 const PostPage: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) => {
   return (
@@ -19,17 +20,14 @@ const PostPage: NextPage<{ blocks: any, title: string }> = ({ blocks, title }) =
   )
 }
 
-// 🟢 核心改动：使用 getServerSideProps 实现 100% 实时抓取
-export const getServerSideProps = withNavFooterStaticProps(
-  async (context: any) => {
-    const slug = context.params?.page as string // 这里的 page 对应网址里的 slug
+// 🟢 改回 getStaticProps，稳定性提升
+export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
+  async (context) => {
+    const slug = context.params?.page as string
     const page = await getPageBySlug(slug)
 
-    if (!page) {
-      return { notFound: true }
-    }
+    if (!page) return { notFound: true }
 
-    // 现场抓取 Notion 里的最新块
     const blocks = await getAllBlocks(page.id)
     const formattedBlocks = await formatBlocks(blocks)
 
@@ -38,11 +36,22 @@ export const getServerSideProps = withNavFooterStaticProps(
         blocks: formattedBlocks,
         title: (page.properties.title as any).title[0].plain_text,
       },
+      revalidate: 1, // 🟢 1秒刷新一次
     }
   }
 )
 
-// 🟢 彻底删掉原来的 getStaticPaths，SSR 模式不需要它
+export async function getStaticPaths() {
+  const posts = await getPosts(ApiScope.Archive)
+  const paths = posts.map((post: any) => ({
+    params: { page: post.properties.slug.rich_text[0].plain_text },
+  }))
+
+  return {
+    paths,
+    fallback: 'blocking', 
+  }
+}
 
 const withNavPage = withNavFooter(PostPage)
 export default withNavPage

@@ -1,5 +1,5 @@
 import CONFIG from '@/blog.config'
-import { NextPage } from 'next'
+import { GetStaticProps, NextPage } from 'next'
 import ContainerLayout from '../components/post/ContainerLayout'
 import { WidgetCollection } from '../components/section/WidgetCollection'
 import withNavFooter from '../components/withNavFooter'
@@ -28,12 +28,10 @@ const Home: NextPage<{ posts: Post[], widgets: any }> = ({ posts, widgets }) => 
   )
 }
 
-// 🟢 核心改动：使用 getServerSideProps 实现首页实时更新
-export const getServerSideProps = withNavFooterStaticProps(
-  async (_context: any, sharedPageStaticProps: any) => {
+export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
+  async (_context, sharedPageStaticProps: any) => {
     const { LARGE, MEDIUM, SMALL, MORE } = CONFIG.HOME_POSTS_COUNT
     const sum = LARGE + MEDIUM + SMALL + MORE + 5
-
     const postsRaw = await getLimitPosts(sum, ApiScope.Home)
     const allFormattedPosts = await formatPosts(postsRaw)
 
@@ -43,7 +41,9 @@ export const getServerSideProps = withNavFooterStaticProps(
     const blogStats = await getBlogStats()
     const rawWidgets = await getWidgets()
     const preFormattedWidgets = await preFormatWidgets(rawWidgets)
-    const formattedWidgets = await formatWidgets(preFormattedWidgets, blogStats)
+    
+    // 🛡️ 核心修复：通过 as any 解决 blogStats 类型不匹配导致的红字报错
+    const formattedWidgets = await formatWidgets(preFormattedWidgets, blogStats as any)
 
     const safeWidgets = formattedWidgets as any
     if (safeWidgets?.profile) {
@@ -57,6 +57,7 @@ export const getServerSideProps = withNavFooterStaticProps(
         posts: filteredPosts.slice(0, sum - 5),
         widgets: safeWidgets,
       },
+      revalidate: 1, 
     }
   }
 )
