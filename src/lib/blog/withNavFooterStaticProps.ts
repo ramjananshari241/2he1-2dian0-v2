@@ -9,7 +9,6 @@ export function withNavFooterStaticProps(
   ) => Promise<any>
 ) {
   return async (context: GetStaticPropsContext): Promise<any> => {
-    // 每次 ISR 触发时，这里都会重新执行
     const sharedData = await getCachedNavFooter()
 
     const sharedProps = {
@@ -28,13 +27,9 @@ export function withNavFooterStaticProps(
 
     const result = await getStaticPropsFunc(context, sharedProps)
 
-    // 🟢 核心：强制合并 revalidate。如果页面没写，就用全局的 10 秒。
+    // 🟢 关键：强制透传 revalidate，否则 Vercel 收不到更新指令
     return {
       ...result,
-      props: {
-        ...sharedProps.props,
-        ...(result.props || {}),
-      },
       revalidate: result.revalidate || CONFIG.NEXT_REVALIDATE_SECONDS,
     }
   }
