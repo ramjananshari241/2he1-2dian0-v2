@@ -12,8 +12,6 @@ import { ApiScope } from './../../types/notion'
 import { filterSwitch } from './filter'
 import { databaseId, notion } from './notion'
 
-// TODO: Refactor this to use the Utility functions `iteratePaginatedAPI` & `collectPaginatedAPI`  in @notionhq/client
-
 export const getDatabase = async (
   scope?: ApiScope,
   cursor?: string,
@@ -21,6 +19,7 @@ export const getDatabase = async (
 ): Promise<QueryDatabaseResponse> => {
   const filter = scope ? filterSwitch(scope) : undefined
 
+  // 🟢 核心修复：强制每次查询都是全新的
   const response = await notion.databases.query({
     database_id: id ?? databaseId,
     filter: filter,
@@ -57,7 +56,6 @@ export const getAll = async (
       cursor = additional.next_cursor
     } while (cursor)
   }
-
   return objects
 }
 
@@ -86,55 +84,31 @@ export const getLimitPosts = async (
 }
 
 export const getDatabaseMetadata = async (): Promise<GetDatabaseResponse> => {
-  const response = await notion.databases.retrieve({ database_id: databaseId })
-  return response
+  return await notion.databases.retrieve({ database_id: databaseId })
 }
 
-export const getDatabaseTitle = async (): Promise<
-  Array<RichTextItemResponse>
-> => {
+export const getDatabaseTitle = async (): Promise<Array<RichTextItemResponse>> => {
   const response = await getDatabaseMetadata()
-  if (!isFullDatabase(response)) {
-    throw new Error('Database response is not full')
-  }
+  if (!isFullDatabase(response)) throw new Error('Database error')
   return response.title
 }
 
-export const getDatabaseIcon = async (): Promise<
-  DatabaseObjectResponse['icon']
-> => {
+export const getDatabaseIcon = async (): Promise<DatabaseObjectResponse['icon']> => {
   const response = await getDatabaseMetadata()
-  if (!isFullDatabase(response)) {
-    throw new Error('Database response is not full')
-  }
+  if (!isFullDatabase(response)) throw new Error('Database error')
   return response.icon
 }
 
-export const getDatabaseProperties = async (): Promise<
-  PartialDatabaseObjectResponse['properties']
-> => {
+export const getDatabaseProperties = async (): Promise<PartialDatabaseObjectResponse['properties']> => {
   const response = await getDatabaseMetadata()
   return response.properties
 }
 
-function addObjects(
-  results: QueryDatabaseResponse['results'],
-  objects: PageObjectResponse[],
-  filter?: ContentType,
-  limit?: number
-) {
+function addObjects(results: QueryDatabaseResponse['results'], objects: PageObjectResponse[], filter?: ContentType, limit?: number) {
   results.forEach((object) => {
     if (isFullPage(object)) {
-      if (limit) {
-        if (objects.length >= limit) {
-          return
-        }
-      }
-      if (
-        !filter ||
-        (object.properties.type.type === 'select' &&
-          object.properties.type.select?.name === filter)
-      ) {
+      if (limit && objects.length >= limit) return
+      if (!filter || (object.properties.type.type === 'select' && object.properties.type.select?.name === filter)) {
         objects.push(object)
       }
     }
