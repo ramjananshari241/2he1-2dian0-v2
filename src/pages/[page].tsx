@@ -39,7 +39,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         title: (page.properties.title as any).title[0].plain_text,
       },
       // 🟢 开启实时抓取开关
-      revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
+      revalidate: 1,
     }
   }
 )

@@ -58,7 +58,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         widgets: safeWidgets,
       },
       // 🟢 触发开关
-      revalidate: CONFIG.NEXT_REVALIDATE_SECONDS,
+      revalidate: 1,
     }
   }
 )
